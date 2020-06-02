@@ -18,13 +18,13 @@
 ## Install
 
 ```
-go get github.com/logdna/logdna-go-client
+go get github.com/logdna/logdna-go
 ```
 
 ## Setup
 ```golang
 import (
-    "logdna/logger"
+    "github.com/logdna/logdna-go/logger"
 )
 
 func main() {
@@ -113,17 +113,10 @@ For more information on testing see: https://golang.org/pkg/testing/
 
 ## API
 
-### CreateLogger(key, [options])
+### CreateLogger(Options, Key)
 ---
-#### key
 
-* _**Required**_
-* Type: `string`
-* Values: `YourIngestionKey`
-
-The [LogDNA Ingestion Key](https://app.logdna.com/manage/profile) associated with your account.
-
-#### options
+#### Options
 
 ##### App
 
@@ -135,6 +128,25 @@ The [LogDNA Ingestion Key](https://app.logdna.com/manage/profile) associated wit
 
 The default app passed along with every log sent through this instance.
 
+##### Env
+
+* _**Optional**_
+* Type: `string`
+* Default: `''`
+* Values: `YourCustomEnvironment`
+* Max Length: `32`
+
+The default environment passed along with every log sent through this instance.
+
+##### FlushInterval
+
+* _**Optional**_
+* Type: `time.duration`
+* Default: `5`
+* Values: `10`
+
+The flush interval sets how often data is flushed and logs shipped into LogDNA.
+
 ##### Hostname
 
 * _**Optional**_
@@ -145,15 +157,26 @@ The default app passed along with every log sent through this instance.
 
 The default hostname passed along with every log sent through this instance.
 
-##### Env
+##### IndexMeta
+
+* _**Optional**_
+* Type: `bool`
+* Default: `false`
+* Values: `true`
+
+We allow meta objects to be passed with each line. By default these meta objects will be stringified and will not be searchable, but will be displayed for informational purposes.
+
+If this option is turned to true then meta objects will be parsed and will be searchable up to three levels deep. Any fields deeper than three levels will be stringified and cannot be searched.
+
+WARNING When this option is true, your metadata objects across all types of log messages MUST have consistent types or the metadata object may not be parsed properly!
+
+##### IngestURL
 
 * _**Optional**_
 * Type: `string`
-* Default: `''`
-* Values: `YourCustomEnvironment`
-* Max Length: `32`
+* Default: `https://logs.logdna.com/logs/ingest`
 
-The default environment passed along with every log sent through this instance.
+A custom ingestion endpoint to stream log lines into.
 
 ##### IPAddress
 
@@ -183,19 +206,64 @@ The default level passed along with every log sent through this instance.
 
 The default MAC Address passed along with every log sent through this instance.
 
-### Log(line)
----
-#### Options
-
-##### Level
+##### MaxBufferLen
 
 * _**Optional**_
-* Type: `String`
-* Default: `Info`
-* Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
-* Max Length: `32`
+* Type: `int`
+* Default: `5`
+* Values: `10`
 
-The level passed along with this log line.
+MaxBufferLen sets the number of logs that are buffered before data is flushed and shipped to LogDNA.
+
+##### Meta
+
+* _**Optional**_
+* Type: `struct`
+
+A meta object for additional metadata about the log line that is passed.
+
+##### Tags
+
+* _**Optional**_
+* Type: `string`
+* Default: `5`
+* Values: `logging,golang`
+
+
+List of tags used to dynamically group hosts.
+
+#### Key
+
+* _**Required**_
+* Type: `string`
+* Values: `YourIngestionKey`
+
+The [LogDNA Ingestion Key](https://app.logdna.com/manage/profile) associated with your account.
+
+---
+
+### Log(Message)
+
+#### Message
+* _**Required**_
+* Type: `string`
+* Default: `''`
+
+The line which will be sent to the LogDNA system.
+
+---
+
+### LogWithOptions(Message, Options)
+
+#### Message
+
+* _**Required**_
+* Type: `string`
+* Default: `''`
+
+The line which will be sent to the LogDNA system.
+
+#### Options
 
 ##### App
 
@@ -205,7 +273,7 @@ The level passed along with this log line.
 * Values: `YourCustomApp`
 * Max Length: `32`
 
-The app passed along with this log line.
+The default app passed along with every log sent through this instance.
 
 ##### Env
 
@@ -215,15 +283,129 @@ The app passed along with this log line.
 * Values: `YourCustomEnvironment`
 * Max Length: `32`
 
-The environment passed along with this log line.
+The default environment passed along with every log sent through this instance.
 
-##### meta
+##### FlushInterval
 
 * _**Optional**_
-* Type: `JSON`
-* Default: `null`
+* Type: `time.duration`
+* Default: `5`
+* Values: `YourCustomEnvironment`
 
-A meta object that provides additional context about the log line that is passed.
+The flush interval sets how often data is flushed and logs shipped into LogDNA.
+
+##### Hostname
+
+* _**Optional**_
+* Type: `string`
+* Default: `''`
+* Values: `YourCustomHostname`
+* Max Length: `32`
+
+The default hostname passed along with every log sent through this instance.
+
+##### IndexMeta
+
+* _**Optional**_
+* Type: `bool`
+* Default: `false`
+* Values: `true`
+
+We allow meta objects to be passed with each line. By default these meta objects will be stringified and will not be searchable, but will be displayed for informational purposes.
+
+If this option is turned to true then meta objects will be parsed and will be searchable up to three levels deep. Any fields deeper than three levels will be stringified and cannot be searched.
+
+WARNING When this option is true, your metadata objects across all types of log messages MUST have consistent types or the metadata object may not be parsed properly!
+
+##### IngestURL
+
+* _**Optional**_
+* Type: `string`
+* Default: `https://logs.logdna.com/logs/ingest`
+
+A custom ingestion endpoint to stream log lines into.
+
+##### IPAddress
+
+* _**Optional**_
+* Type: `string`
+* Default: `''`
+* Values: `10.0.0.1`
+
+The default IP Address passed along with every log sent through this instance.
+
+##### Level
+
+* _**Optional**_
+* Type: `string`
+* Default: `Info`
+* Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
+* Max Length: `32`
+
+The default level passed along with every log sent through this instance.
+
+##### MacAddress
+
+* _**Optional**_
+* Type: `string`
+* Default: `''`
+* Values: `C0:FF:EE:C0:FF:EE`
+
+The default MAC Address passed along with every log sent through this instance.
+
+##### MaxBufferLen
+
+* _**Optional**_
+* Type: `int`
+* Default: `5`
+* Values: `10`
+
+MaxBufferLen sets the number of logs that are buffered before data is flushed and shipped to LogDNA.
+
+##### Meta
+
+* _**Optional**_
+* Type: `Meta`
+
+A meta object for additional metadata about the log line that is passed.
+
+##### Tags
+
+* _**Optional**_
+* Type: `string`
+* Default: `5`
+* Values: `logging,golang`
+
+
+List of tags used to dynamically group hosts.
+
+---
+
+### LogWithLevel(Message, Level)
+
+#### Message
+
+* _**Required**_
+* Type: `string`
+* Default: `''`
+
+The line which will be sent to the LogDNA system.
+
+#### Level
+
+* _**Required**_
+* Type: `string`
+* Default: ``
+* Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
+* Max Length: `32`
+
+The default level passed along with every log sent through this instance.
+
+---
+
+### Close()
+
+Close must be run when done with using a logger to forward any remaining buffered logs into the LogDNA product.
 
 ## License
 

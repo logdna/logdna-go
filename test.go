@@ -1,7 +1,7 @@
 package main
 
 import (
-	"logdna/logger"
+	"github.com/logdna/logdna-go/logger"
 )
 
 func main() {

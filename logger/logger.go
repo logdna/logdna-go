@@ -67,10 +67,10 @@ func checkOptions(options *Options) {
 		options.IngestURL = "https://logs.logdna.com/logs/ingest"
 	}
 
-	checkParameterLength("Level", options.Level)
 	checkParameterLength("App", options.App)
-	checkParameterLength("Hostname", options.Hostname)
 	checkParameterLength("Env", options.Env)
+	checkParameterLength("Hostname", options.Hostname)
+	checkParameterLength("Level", options.Level)
 
 	reMacAddress := regexp.MustCompile(`^([0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])`)
 	reHostname := regexp.MustCompile(`(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])`)
