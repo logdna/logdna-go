@@ -1,4 +1,9 @@
 version: 2.1
+tagged_build_filters: &tagged_build_filters
+  branches:
+    ignore: /.*/
+  tags:
+    only: /v[0-9]+\.[0-9]+\.[0-9]+/
 test_build_filters: &test_build_filters
   branches:
     only: /.*/
@@ -12,7 +17,61 @@ jobs:
       - checkout
       - run: go get -u golang.org/x/lint/golint
       - run: golint -set_exit_status **/*.go
+  build:
+    docker:
+      - image: circleci/node:10
+    steps:
+      - checkout
+      - run:
+          name: ZIP the Codebase
+          command: zip logdna-go.zip -r logger/logdna.go go.mod
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./logdna-go.zip
+  approve:
+    machine: true
+    steps:
+      - attach_workspace:
+          at: .
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./logdna-go.zip
+  release:
+    docker:
+      - image: circleci/golang:1.12
+    steps:
+      - attach_workspace:
+          at: .
+      - run: go get -u github.com/tcnksm/ghr
+      - run:
+          name: Create a Release
+          command: |
+            ghr \
+              -n "LogDNA Go Client ${CIRCLE_TAG}" \
+              -t ${GITHUB_TOKEN} \
+              -u ${CIRCLE_PROJECT_USERNAME} \
+              -r ${CIRCLE_PROJECT_REPONAME} \
+              -draft ${CIRCLE_TAG} ./logdna-go.zip
 workflows:
+  update:
+    jobs:
+      - test:
+          filters: *tagged_build_filters
+      - build:
+          requires:
+            - test
+          filters: *tagged_build_filters
+      - approve:
+          type: approval
+          requires:
+            - build
+          filters: *tagged_build_filters
+      - release:
+          requires:
+            - approve
+          filters: *tagged_build_filters
   test:
     jobs:
       - test:
