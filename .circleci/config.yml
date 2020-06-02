@@ -1,0 +1,19 @@
+version: 2.1
+test_build_filters: &test_build_filters
+  branches:
+    only: /.*/
+  tags:
+    ignore: /v[0-9]+\.[0-9]+\.[0-9]+/
+jobs:
+  test:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run: go get -u golang.org/x/lint/golint
+      - run: golint -set_exit_status **/*.go
+workflows:
+  test:
+    jobs:
+      - test:
+          filters: *test_build_filters
