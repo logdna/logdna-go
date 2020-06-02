@@ -5,6 +5,8 @@
   <p align="center">Go library for logging to <a href="https://app.logdna.com">LogDNA</a></p>
 </p>
 
+[![CircleCI](https://circleci.com/gh/logdna/logdna-go/tree/master.svg?style=svg)](https://circleci.com/gh/logdna/logdna-go/tree/master)
+
 ---
 * **[Install](#install)**
 * **[Setup](#setup)**
