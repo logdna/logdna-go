@@ -6,6 +6,7 @@
 </p>
 
 [![CircleCI](https://circleci.com/gh/logdna/logdna-go/tree/master.svg?style=svg)](https://circleci.com/gh/logdna/logdna-go/tree/master)
+[![GoDoc](https://godoc.org/github.com/logdna/logdna-go?status.svg)](https://godoc.org/github.com/logdna/logdna-go/logger)
 
 ---
 * **[Install](#install)**
@@ -142,8 +143,8 @@ The default environment passed along with every log sent through this instance.
 
 * _**Optional**_
 * Type: `time.duration`
-* Default: `5`
-* Values: `10`
+* Default: `5 * time.Second`
+* Values: `10 * time.Second`
 
 The flush interval sets how often data is flushed and logs shipped into LogDNA.
 

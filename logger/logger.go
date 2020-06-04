@@ -11,7 +11,8 @@ import (
 	"time"
 )
 
-// Options encapsulates user-provided options including app and environment
+// Options encapsulates user-provided options such as the Level and App
+// that are passed along with each log.
 type Options struct {
 	App           string
 	Env           string
@@ -27,13 +28,13 @@ type Options struct {
 	Tags          string
 }
 
-// Meta encapsulates the metadata associated with a logline
+// Meta encapsulates metadata associated with a log.
 type Meta struct {
 	Meta  *Meta
 	Value string
 }
 
-// Logger is returned such that a user can begin sending logs
+// Logger is the means by which a user can begin to send logs.
 type Logger struct {
 	Buffer   []Message
 	Key      string
@@ -41,7 +42,7 @@ type Logger struct {
 	Options  Options
 }
 
-// Message encapsulates the log data that is sent to LogDNA
+// Message encapsulates app, level, message and options data.
 type Message struct {
 	App     string
 	Body    string
@@ -97,7 +98,7 @@ func (logger *Logger) checkBuffer() {
 	}
 }
 
-// Close must be run after a user is done with using a logger before logs are viewable within LogDNA
+// Close must be run after a user is done with using a logger before logs are viewable within LogDNA.
 func (logger *Logger) Close() {
 	time.Sleep(logger.Options.FlushInterval)
 	logger.flush()
@@ -119,7 +120,7 @@ func (logger *Logger) processRequest() {
 	}
 }
 
-// CreateLogger creates a logger with the provided options and key
+// CreateLogger creates a logger with parametrized options and key.
 // This logger can then be used to send logs into LogDNA.
 func CreateLogger(options Options, key string) *Logger {
 	checkOptions(&options)
@@ -133,7 +134,7 @@ func CreateLogger(options Options, key string) *Logger {
 	return &logger
 }
 
-// Log forwards a provided log message to LogDNA
+// Log sends a provided log message to LogDNA.
 func (logger *Logger) Log(message string) {
 	loggerMessage := Message{
 		Body: message,
@@ -141,7 +142,7 @@ func (logger *Logger) Log(message string) {
 	logger.Messages <- loggerMessage
 }
 
-// LogWithLevel sends a message to LogDNA with a parametrized level
+// LogWithLevel sends a log message to LogDNA with a parametrized level.
 func (logger *Logger) LogWithLevel(message string, level string) {
 	checkParameterLength("Level", level)
 
@@ -153,38 +154,38 @@ func (logger *Logger) LogWithLevel(message string, level string) {
 	logger.Messages <- loggerMessage
 }
 
-// Info logs a message to LogDNA with a level of Info
+// Info logs a message at level Info to LogDNA.
 func (logger *Logger) Info(message string) {
 	logger.LogWithLevel(message, "info")
 }
 
-// Warn logs a message to LogDNA with a level of Warn
+// Warn logs a message at level Warn to LogDNA.
 func (logger *Logger) Warn(message string) {
 	logger.LogWithLevel(message, "warn")
 }
 
-// Debug logs a message to LogDNA with a level of Debug
+// Debug logs a message at level Debug to LogDNA.
 func (logger *Logger) Debug(message string) {
 	logger.LogWithLevel(message, "debug")
 }
 
-// Error logs a message to LogDNA with a level of Error
+// Error logs a message at level Error to LogDNA.
 func (logger *Logger) Error(message string) {
 	logger.LogWithLevel(message, "error")
 }
 
-// Fatal logs a message to LogDNA with a level of Fatal
+// Fatal logs a message at level Fatal to LogDNA.
 func (logger *Logger) Fatal(message string) {
 	logger.LogWithLevel(message, "fatal")
 }
 
-// Critical logs a message to LogDNA with a level of Critical
+// Critical logs a message at level Critical to LogDNA.
 func (logger *Logger) Critical(message string) {
 	logger.LogWithLevel(message, "critical")
 }
 
 // LogWithOptions allows the user to update options uniquely for a given log message
-// before sending the log into LogDNA
+// before sending the log to LogDNA.
 func (logger *Logger) LogWithOptions(message string, options Options) {
 	checkOptions(&options)
 
@@ -197,7 +198,7 @@ func (logger *Logger) LogWithOptions(message string, options Options) {
 }
 
 // LogWithLevelAndApp allows the user to customize level and app uniquely for a single log
-// before sending the log into LogDNA
+// before sending the log into LogDNA.
 func (logger *Logger) LogWithLevelAndApp(message string, level string, app string) {
 	checkParameterLength("Level", level)
 	checkParameterLength("App", app)
@@ -280,13 +281,9 @@ func (logger Logger) makeRequest(logmsg Message) {
 	var result map[string]interface{}
 
 	json.NewDecoder(resp.Body).Decode(&result)
-	fmt.Println(result)
-
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	res := buf.String()
-	fmt.Println(res)
 }
