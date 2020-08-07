@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://app.logdna.com">
-    <img style="font-size:0;" height="200" width="400"src="https://github.com/logdna/artwork/blob/master/logo+go.png" class="center">
+    <img style="font-size:0;" height="95" width="201"src="https://github.com/logdna/artwork/blob/master/logo+go.png" class="center">
   </a>
   <p align="center">Go library for logging to <a href="https://app.logdna.com">LogDNA</a></p>
 </p>
@@ -124,7 +124,7 @@ For more information on testing see: https://golang.org/pkg/testing/
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `YourCustomApp`
+* Example Values: `YourCustomApp`
 * Max Length: `32`
 
 The default app passed along with every log sent through this instance.
@@ -134,7 +134,7 @@ The default app passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `YourCustomEnvironment`
+* Example Values: `YourCustomEnvironment`
 * Max Length: `32`
 
 The default environment passed along with every log sent through this instance.
@@ -144,16 +144,16 @@ The default environment passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `time.duration`
 * Default: `5 * time.Second`
-* Values: `10 * time.Second`
+* Example Values: `10 * time.Second`
 
-The flush interval sets how often data is flushed and logs shipped into LogDNA.
+The flush interval sets how often data is flushed and logs are shipped into LogDNA.
 
 ##### Hostname
 
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `YourCustomHostname`
+* Example Values: `YourCustomHostname`
 * Max Length: `32`
 
 The default hostname passed along with every log sent through this instance.
@@ -163,11 +163,11 @@ The default hostname passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `bool`
 * Default: `false`
-* Values: `true`
+* Example Values: `true`
 
 We allow meta objects to be passed with each line. By default these meta objects will be stringified and will not be searchable, but will be displayed for informational purposes.
 
-If this option is turned to true then meta objects will be parsed and will be searchable up to three levels deep. Any fields deeper than three levels will be stringified and cannot be searched.
+If this option is set to true then meta objects will be parsed and will be searchable up to three levels deep. Any fields deeper than three levels will be stringified and cannot be searched.
 
 WARNING When this option is true, your metadata objects across all types of log messages MUST have consistent types or the metadata object may not be parsed properly!
 
@@ -184,7 +184,7 @@ A custom ingestion endpoint to stream log lines into.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `10.0.0.1`
+* Example Values: `10.0.0.1`
 
 The default IP Address passed along with every log sent through this instance.
 
@@ -193,7 +193,7 @@ The default IP Address passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `string`
 * Default: `Info`
-* Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
+* Example Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
 * Max Length: `32`
 
 The default level passed along with every log sent through this instance.
@@ -203,7 +203,7 @@ The default level passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `C0:FF:EE:C0:FF:EE`
+* Example Values: `C0:FF:EE:C0:FF:EE`
 
 The default MAC Address passed along with every log sent through this instance.
 
@@ -212,7 +212,7 @@ The default MAC Address passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `int`
 * Default: `5`
-* Values: `10`
+* Example Values: `10`
 
 MaxBufferLen sets the number of logs that are buffered before data is flushed and shipped to LogDNA.
 
@@ -228,7 +228,7 @@ A meta object for additional metadata about the log line that is passed.
 * _**Optional**_
 * Type: `string`
 * Default: `5`
-* Values: `logging,golang`
+* Example Values: `logging,golang`
 
 
 List of tags used to dynamically group hosts.
@@ -237,7 +237,7 @@ List of tags used to dynamically group hosts.
 
 * _**Required**_
 * Type: `string`
-* Values: `YourIngestionKey`
+* Example Values: `123abc`
 
 The [LogDNA Ingestion Key](https://app.logdna.com/manage/profile) associated with your account.
 
@@ -250,7 +250,7 @@ The [LogDNA Ingestion Key](https://app.logdna.com/manage/profile) associated wit
 * Type: `string`
 * Default: `''`
 
-The line which will be sent to the LogDNA system.
+The line/message to be sent to the LogDNA system.
 
 ---
 
@@ -262,7 +262,7 @@ The line which will be sent to the LogDNA system.
 * Type: `string`
 * Default: `''`
 
-The line which will be sent to the LogDNA system.
+The line/message to be sent to the LogDNA system.
 
 #### Options
 
@@ -271,7 +271,7 @@ The line which will be sent to the LogDNA system.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `YourCustomApp`
+* Example Values: `YourCustomApp`
 * Max Length: `32`
 
 The default app passed along with every log sent through this instance.
@@ -281,7 +281,7 @@ The default app passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `YourCustomEnvironment`
+* Example Values: `YourCustomEnvironment`
 * Max Length: `32`
 
 The default environment passed along with every log sent through this instance.
@@ -291,7 +291,7 @@ The default environment passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `time.duration`
 * Default: `5`
-* Values: `YourCustomEnvironment`
+* Example Values: `YourCustomEnvironment`
 
 The flush interval sets how often data is flushed and logs shipped into LogDNA.
 
@@ -300,7 +300,7 @@ The flush interval sets how often data is flushed and logs shipped into LogDNA.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `YourCustomHostname`
+* Example Values: `YourCustomHostname`
 * Max Length: `32`
 
 The default hostname passed along with every log sent through this instance.
@@ -310,7 +310,7 @@ The default hostname passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `bool`
 * Default: `false`
-* Values: `true`
+* Example Values: `true`
 
 We allow meta objects to be passed with each line. By default these meta objects will be stringified and will not be searchable, but will be displayed for informational purposes.
 
@@ -331,7 +331,7 @@ A custom ingestion endpoint to stream log lines into.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `10.0.0.1`
+* Example Values: `10.0.0.1`
 
 The default IP Address passed along with every log sent through this instance.
 
@@ -340,7 +340,7 @@ The default IP Address passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `string`
 * Default: `Info`
-* Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
+* Example Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
 * Max Length: `32`
 
 The default level passed along with every log sent through this instance.
@@ -350,7 +350,7 @@ The default level passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `string`
 * Default: `''`
-* Values: `C0:FF:EE:C0:FF:EE`
+* Example Values: `C0:FF:EE:C0:FF:EE`
 
 The default MAC Address passed along with every log sent through this instance.
 
@@ -359,7 +359,7 @@ The default MAC Address passed along with every log sent through this instance.
 * _**Optional**_
 * Type: `int`
 * Default: `5`
-* Values: `10`
+* Example Values: `10`
 
 MaxBufferLen sets the number of logs that are buffered before data is flushed and shipped to LogDNA.
 
@@ -375,7 +375,7 @@ A meta object for additional metadata about the log line that is passed.
 * _**Optional**_
 * Type: `string`
 * Default: `5`
-* Values: `logging,golang`
+* Example Values: `logging,golang`
 
 
 List of tags used to dynamically group hosts.
@@ -397,7 +397,7 @@ The line which will be sent to the LogDNA system.
 * _**Required**_
 * Type: `string`
 * Default: ``
-* Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
+* Example Values: `Debug`, `Trace`, `Info`, `Warn`, `Error`, `Fatal`, `YourCustomLevel`
 * Max Length: `32`
 
 The default level passed along with every log sent through this instance.
@@ -410,6 +410,6 @@ Close must be run when done with using a logger to forward any remaining buffere
 
 ## License
 
-MIT © [LogDNA](https://logdna.com/)
+Copyright © LogDNA, released under an MIT license. See the [LICENSE](./LICENSE.md) file and https://opensource.org/licenses/MIT
 
 *Happy Logging!*
