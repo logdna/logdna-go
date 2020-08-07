@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://app.logdna.com">
-    <img style="font-size:0;" height="150" width="500" src="https://github.com/logdna/artwork/blob/master/logdnalogo.png" class="center"><img style="float:left;" height="200" width="600" src="https://miro.medium.com/max/3780/1*pT5NLaclavnZQKhiQ_zcqA.png" class="center">
+    <img style="font-size:0;" height="200" width="400"src="https://github.com/logdna/artwork/blob/master/logo+go.png" class="center">
   </a>
   <p align="center">Go library for logging to <a href="https://app.logdna.com">LogDNA</a></p>
 </p>
