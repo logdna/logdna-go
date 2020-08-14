@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"time"
+	"github.com/joho/godotenv"
 )
 
 // Options encapsulates user-provided options such as the Level and App
@@ -123,6 +124,7 @@ func (logger *Logger) processRequest() {
 // CreateLogger creates a logger with parametrized options and key.
 // This logger can then be used to send logs into LogDNA.
 func CreateLogger(options Options, key string) *Logger {
+	godotenv.Load(".env")
 	checkOptions(&options)
 
 	logger := Logger{
@@ -270,8 +272,15 @@ func (logger Logger) makeRequest(logmsg Message) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	
+	req, err := http.NewRequest("POST", options.IngestURL, bytes.NewBuffer(bytesRepresentation))
+	req.Header.Set("user-agent", os.Getenv("USERAGENT"))
+	req.Header.Set("apikey", logger.Key)
+	req.Header.Set("Content-type", "application/json")
 
-	resp, err := http.Post(options.IngestURL, "application/json", bytes.NewBuffer(bytesRepresentation))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -281,8 +290,6 @@ func (logger Logger) makeRequest(logmsg Message) {
 	var result map[string]interface{}
 
 	json.NewDecoder(resp.Body).Decode(&result)
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
 	}
