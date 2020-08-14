@@ -270,8 +270,15 @@ func (logger Logger) makeRequest(logmsg Message) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	
+	req, err := http.NewRequest("POST", options.IngestURL, bytes.NewBuffer(bytesRepresentation))
+	req.Header.Set("user-agent", "go/1.0.0")
+	req.Header.Set("apikey", logger.Key)
+	req.Header.Set("Content-type", "application/json")
 
-	resp, err := http.Post(options.IngestURL, "application/json", bytes.NewBuffer(bytesRepresentation))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -281,8 +288,6 @@ func (logger Logger) makeRequest(logmsg Message) {
 	var result map[string]interface{}
 
 	json.NewDecoder(resp.Body).Decode(&result)
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
 	}
