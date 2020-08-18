@@ -26,7 +26,11 @@ func TestMeta(t *testing.T) {
 		IndexMeta:  true,
 	}
 
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 1")
 	myLogger.Close()
 }
@@ -43,7 +47,11 @@ func TestBufferLen(t *testing.T) {
 		MaxBufferLen: 10,
 	}
 
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 1")
 	myLogger.Close()
 }
@@ -60,12 +68,16 @@ func TestFlushInterval(t *testing.T) {
 		FlushInterval: 10 * time.Second,
 	}
 
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 1")
 	myLogger.Close()
 }
 
-func TestLongLevel(t *testing.T) {
+func TestInvalidLevelLength(t *testing.T) {
 	options := Options{}
 	options.Level = "fatalfatalfatalfatalfatalfatalfatalfatalfatalfatalfatalfatalfatal"
 	options.Hostname = "gotest"
@@ -75,27 +87,29 @@ func TestLongLevel(t *testing.T) {
 	options.Env = "production"
 	options.Tags = "logging,golang"
 
-	myLogger := CreateLogger(options, key)
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	_, err := CreateLogger(options, key)
+	if err == nil {
+		t.Fatal("Error expected but not returned")
+	}
 }
 
-func TestLongApp(t *testing.T) {
+func TestInvalidAppLength(t *testing.T) {
 	options := Options{}
 	options.Level = "fatal"
 	options.Hostname = "gotest"
 	options.App = "myappmyappmyappmyappmyappmyappmyappmyappmyappmyapp"
 	options.IPAddress = "10.0.1.101"
 	options.MacAddress = "C0:FF:EE:C0:FF:EE"
-	options.Env = "productionproductionproductionproductionproductionproductionproduction"
+	options.Env = "production"
 	options.Tags = "logging,golang"
 
-	myLogger := CreateLogger(options, key)
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	_, err := CreateLogger(options, key)
+	if err == nil {
+		t.Fatal("Error expected but not returned")
+	}
 }
 
-func TestLongEnv(t *testing.T) {
+func TestInvalidEnvLength(t *testing.T) {
 	meta := Meta{}
 	nestedMeta := Meta{}
 	nestedMeta.Value = "nested field"
@@ -113,12 +127,13 @@ func TestLongEnv(t *testing.T) {
 	options.Meta = meta
 	options.IndexMeta = true
 
-	myLogger := CreateLogger(options, key)
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	_, err := CreateLogger(options, key)
+	if err == nil {
+		t.Fatal("Error expected but not returned")
+	}
 }
 
-func TestLongHostname(t *testing.T) {
+func TestInvalidHostnameLength(t *testing.T) {
 	meta := Meta{}
 	nestedMeta := Meta{}
 	nestedMeta.Value = "nested field"
@@ -136,9 +151,10 @@ func TestLongHostname(t *testing.T) {
 	options.Meta = meta
 	options.IndexMeta = true
 
-	myLogger := CreateLogger(options, key)
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	_, err := CreateLogger(options, key)
+	if err == nil {
+		t.Fatal("Error expected but not returned")
+	}
 }
 
 func TestInvalidMac(t *testing.T) {
@@ -159,9 +175,10 @@ func TestInvalidMac(t *testing.T) {
 	options.Meta = meta
 	options.IndexMeta = true
 
-	myLogger := CreateLogger(options, key)
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	_, err := CreateLogger(options, key)
+	if err == nil {
+		t.Fatal("Error expected but not returned")
+	}
 }
 
 func TestInvalidIp(t *testing.T) {
@@ -182,14 +199,19 @@ func TestInvalidIp(t *testing.T) {
 	options.Meta = meta
 	options.IndexMeta = true
 
-	myLogger := CreateLogger(options, key)
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	_, err := CreateLogger(options, key)
+	if err == nil {
+		t.Fatal("Error expected but not returned")
+	}
 }
 
 func TestLevels(t *testing.T) {
 	options := Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Info("Message 1")
 	myLogger.Warn("Message 2")
 	myLogger.Debug("Message 3")
@@ -201,20 +223,35 @@ func TestLevels(t *testing.T) {
 
 func TestLogWithOptions(t *testing.T) {
 	options := Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	otherOptions := Options{Level: "warning", Hostname: "gotest2", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
 	myLogger.Log("Message 1")
-	myLogger.LogWithOptions("Message 2", otherOptions)
+	err = myLogger.LogWithOptions("Message 2", otherOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 3")
 	myLogger.Close()
-
 }
 
 func TestLogWithLevelAndApp(t *testing.T) {
 	options := Options{Level: "warning", Hostname: "gotest", App: "myapp"}
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 1")
-	myLogger.LogWithLevelAndApp("Message 2", "error", "gotest2")
+	err = myLogger.LogWithLevelAndApp("Message 2", "error", "gotest2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 3")
 	myLogger.Close()
 }
@@ -236,7 +273,11 @@ func TestMultipleLoggers(t *testing.T) {
 		Tags:       "logging,golang",
 	}
 
-	myLogger := CreateLogger(options, key)
+	myLogger, err := CreateLogger(options, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger.Log("Message 1")
 	myLogger.Info("Message 2")
 	myLogger.Debug("Message 3")
@@ -250,11 +291,18 @@ func TestMultipleLoggers(t *testing.T) {
 		IPAddress:  "10.0.1.101",
 		MacAddress: "C0:FF:EE:C0:FF:EE",
 	}
-	myLogger2 := CreateLogger(options2, key)
-	myLogger2.LogWithOptions("Message 1", options)
+	myLogger2, err := CreateLogger(options2, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = myLogger2.LogWithOptions("Message 1", options)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	myLogger2.Log("Message 2")
 	myLogger2.Log("Message 3")
 	myLogger2.Log("Message 4")
 	myLogger2.Close()
-
 }
