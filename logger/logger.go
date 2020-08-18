@@ -3,14 +3,19 @@ package logger
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
+
 	"github.com/joho/godotenv"
 )
+
+var defaultIngestURL = "https://logs.logdna.com/logs/ingest"
 
 // Options encapsulates user-provided options such as the Level and App
 // that are passed along with each log.
@@ -51,14 +56,39 @@ type Message struct {
 	Options Options
 }
 
-func checkParameterLength(optionsType string, parameter string) {
-	if len(parameter) > 32 {
-		fmt.Println(optionsType + " length must be less than 32!")
-		os.Exit(3)
-	}
+// InvalidOptionMessage represents an issue with the supplied configuration.
+type InvalidOptionMessage struct {
+	Option  string
+	Message string
 }
 
-func checkOptions(options *Options) {
+func (e InvalidOptionMessage) String() string {
+	return fmt.Sprintf("Options.%s: %s", e.Option, e.Message)
+}
+
+func (options *Options) validate() error {
+	var problems []string
+	reMacAddress := regexp.MustCompile(`^([0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])`)
+	reHostname := regexp.MustCompile(`(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])`)
+	reIPAddress := regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}`)
+
+	validateOptionLength("App", options.App, &problems)
+	validateOptionLength("Env", options.Env, &problems)
+	validateOptionLength("Hostname", options.Hostname, &problems)
+	validateOptionLength("Level", options.Level, &problems)
+
+	if options.MacAddress != "" && (!reMacAddress.MatchString(options.MacAddress)) {
+		problems = append(problems, InvalidOptionMessage{"MacAddress", "invalid format"}.String())
+	}
+
+	if options.Hostname != "" && !reHostname.MatchString(options.Hostname) {
+		problems = append(problems, InvalidOptionMessage{"Hostname", "invalid format"}.String())
+	}
+
+	if options.IPAddress != "" && !reIPAddress.MatchString(options.IPAddress) {
+		problems = append(problems, InvalidOptionMessage{"IPAddress", "invalid format"}.String())
+	}
+
 	if options.FlushInterval == 0 {
 		options.FlushInterval = 5 * time.Second
 	}
@@ -66,29 +96,19 @@ func checkOptions(options *Options) {
 		options.MaxBufferLen = 5
 	}
 	if options.IngestURL == "" {
-		options.IngestURL = "https://logs.logdna.com/logs/ingest"
+		options.IngestURL = defaultIngestURL
 	}
 
-	checkParameterLength("App", options.App)
-	checkParameterLength("Env", options.Env)
-	checkParameterLength("Hostname", options.Hostname)
-	checkParameterLength("Level", options.Level)
-
-	reMacAddress := regexp.MustCompile(`^([0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])`)
-	reHostname := regexp.MustCompile(`(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])`)
-	reIPAddress := regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}`)
-
-	if options.MacAddress != "" && (!reMacAddress.MatchString(options.MacAddress)) {
-		fmt.Println("Invalid MAC Address format.")
-		os.Exit(3)
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, ", "))
 	}
-	if options.Hostname != "" && !reHostname.MatchString(options.Hostname) {
-		fmt.Println("Invalid hostname.")
-		os.Exit(3)
-	}
-	if options.IPAddress != "" && !reIPAddress.MatchString(options.IPAddress) {
-		fmt.Println("Invalid IP Address format.")
-		os.Exit(3)
+
+	return nil
+}
+
+func validateOptionLength(option string, value string, problems *[]string) {
+	if len(value) > 32 {
+		*problems = append(*problems, InvalidOptionMessage{option, "length must be less than 32"}.String())
 	}
 }
 
@@ -123,9 +143,12 @@ func (logger *Logger) processRequest() {
 
 // CreateLogger creates a logger with parametrized options and key.
 // This logger can then be used to send logs into LogDNA.
-func CreateLogger(options Options, key string) *Logger {
+func CreateLogger(options Options, key string) (*Logger, error) {
 	godotenv.Load(".env")
-	checkOptions(&options)
+	err := options.validate()
+	if err != nil {
+		return nil, err
+	}
 
 	logger := Logger{
 		Key:      key,
@@ -133,7 +156,7 @@ func CreateLogger(options Options, key string) *Logger {
 		Options:  options,
 	}
 	go logger.processRequest()
-	return &logger
+	return &logger, nil
 }
 
 // Log sends a provided log message to LogDNA.
@@ -145,15 +168,20 @@ func (logger *Logger) Log(message string) {
 }
 
 // LogWithLevel sends a log message to LogDNA with a parametrized level.
-func (logger *Logger) LogWithLevel(message string, level string) {
-	checkParameterLength("Level", level)
+func (logger *Logger) LogWithLevel(message string, level string) error {
+	options := Options{Level: level}
+	err := options.validate()
+	if err != nil {
+		return err
+	}
 
 	loggerMessage := Message{
 		Body:  message,
-		Level: level,
+		Level: options.Level,
 	}
 
 	logger.Messages <- loggerMessage
+	return nil
 }
 
 // Info logs a message at level Info to LogDNA.
@@ -188,8 +216,11 @@ func (logger *Logger) Critical(message string) {
 
 // LogWithOptions allows the user to update options uniquely for a given log message
 // before sending the log to LogDNA.
-func (logger *Logger) LogWithOptions(message string, options Options) {
-	checkOptions(&options)
+func (logger *Logger) LogWithOptions(message string, options Options) error {
+	err := options.validate()
+	if err != nil {
+		return err
+	}
 
 	loggerMessage := Message{
 		Body:    message,
@@ -197,21 +228,26 @@ func (logger *Logger) LogWithOptions(message string, options Options) {
 	}
 
 	logger.Messages <- loggerMessage
+	return nil
 }
 
 // LogWithLevelAndApp allows the user to customize level and app uniquely for a single log
 // before sending the log into LogDNA.
-func (logger *Logger) LogWithLevelAndApp(message string, level string, app string) {
-	checkParameterLength("Level", level)
-	checkParameterLength("App", app)
+func (logger *Logger) LogWithLevelAndApp(message string, level string, app string) error {
+	options := Options{Level: level, App: app}
+	err := options.validate()
+	if err != nil {
+		return err
+	}
 
 	loggerMessage := Message{
 		Body:  message,
-		Level: level,
-		App:   app,
+		Level: options.Level,
+		App:   options.App,
 	}
 
 	logger.Messages <- loggerMessage
+	return nil
 }
 
 func (logger Logger) makeRequest(logmsg Message) {
@@ -272,7 +308,7 @@ func (logger Logger) makeRequest(logmsg Message) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	
+
 	req, err := http.NewRequest("POST", options.IngestURL, bytes.NewBuffer(bytesRepresentation))
 	req.Header.Set("user-agent", os.Getenv("USERAGENT"))
 	req.Header.Set("apikey", logger.Key)
