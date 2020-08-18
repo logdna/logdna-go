@@ -410,6 +410,6 @@ Close must be run when done with using a logger to forward any remaining buffere
 
 ## License
 
-Copyright © LogDNA, released under an MIT license. See the [LICENSE](./LICENSE.md) file and https://opensource.org/licenses/MIT
+Copyright © LogDNA, released under an MIT license. See the [LICENSE](./LICENSE) file and https://opensource.org/licenses/MIT
 
 *Happy Logging!*
