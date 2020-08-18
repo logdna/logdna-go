@@ -42,7 +42,7 @@ func main() {
     options.Env = "production"
     options.Tags = "logging,golang"
 
-    myLogger := logger.CreateLogger(options, key)
+    myLogger, err := logger.CreateLogger(options, key)
 }
 ```
 _**Required**_
@@ -58,14 +58,14 @@ func main() {
 
     // Can also use Go's short-hand syntax for initializing structs to define all your options in just a single line:
     options := logger.Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-    myLogger := logger.CreateLogger(options, key)
+    myLogger, err := logger.CreateLogger(options, key)
 
     myLogger.Log("Message 2")
 
     // Configure options, level and app with specific logs
     newOptions := logger.Options{Level: "warning", Hostname: "gotest", App: "myotherapp", IPAddress: "10.0.1.101", MacAddress:  "C0:FF:EE:C0:FF:EE"}
-    myLogger.LogWithOptions("Message 3", newOptions)
-    myLogger.LogWithLevelAndApp("Message 4", "fatal", "gotest2")
+    errWithOpts := myLogger.LogWithOptions("Message 3", newOptions)
+    errLevelAndApp := myLogger.LogWithLevelAndApp("Message 4", "fatal", "gotest2")
     myLogger.Close()
 }
 ```
@@ -91,7 +91,7 @@ func main() {
 
     options.Meta = meta
 
-    myLogger := logger.CreateLogger(options, key)
+    myLogger, err := logger.CreateLogger(options, key)
 
     myLogger.Log("Message 7")
     myLogger.Close()

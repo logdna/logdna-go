@@ -21,7 +21,11 @@ func main() {
 	options.Env = "production"
 	options.Tags = "logging,golang"
 
-	myLogger := logger.CreateLogger(options, key)
+	myLogger, err := logger.CreateLogger(options, key)
+	if err != nil {
+		panic(err)
+	}
+
 	myLogger.Log("Message 1")
 	myLogger.Info("Message 2")
 	myLogger.Debug("Message 3")
@@ -35,16 +39,32 @@ func main() {
 	myLogger.Close()
 
 	options2 := logger.Options{Level: "error", Hostname: "gotest2", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-	myLogger2 := logger.CreateLogger(options2, key)
+	myLogger2, err := logger.CreateLogger(options2, key)
+	if err != nil {
+		panic(err)
+	}
+
 	myLogger2.Log("Message 1")
-	myLogger2.LogWithOptions("Message 2", options)
+	err = myLogger2.LogWithOptions("Message 2", options)
+	if err != nil {
+		panic(err)
+	}
+
 	myLogger2.Log("Message 3")
 	myLogger2.Close()
 
 	options3 := logger.Options{Level: "warning", Hostname: "gotest3", App: "myapp"}
-	myLogger3 := logger.CreateLogger(options3, key)
+	myLogger3, err := logger.CreateLogger(options3, key)
+	if err != nil {
+		panic(err)
+	}
+
 	myLogger3.Log("Message 1")
-	myLogger3.LogWithLevelAndApp("Message 2", "error", "gotest2")
+	err = myLogger3.LogWithLevelAndApp("Message 2", "error", "gotest2")
+	if err != nil {
+		panic(err)
+	}
+
 	myLogger3.Log("Message 3")
 	myLogger3.Close()
 }
