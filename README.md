@@ -8,6 +8,8 @@
 [![CircleCI](https://circleci.com/gh/logdna/logdna-go/tree/master.svg?style=svg)](https://circleci.com/gh/logdna/logdna-go/tree/master)
 [![GoDoc](https://godoc.org/github.com/logdna/logdna-go?status.svg)](https://godoc.org/github.com/logdna/logdna-go/logger)
 
+🚧 Work in progress 🚧
+
 ---
 * **[Install](#install)**
 * **[Setup](#setup)**
