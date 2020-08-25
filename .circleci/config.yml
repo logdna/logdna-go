@@ -15,8 +15,24 @@ jobs:
       - image: circleci/golang:1.14
     steps:
       - checkout
-      - run: go get -u golang.org/x/lint/golint
-      - run: golint -set_exit_status **/*.go
+      - run:
+          name: "Install test dependencies"
+          command: |
+            go get -u golang.org/x/lint/golint
+            go get github.com/mattn/goveralls
+      - run:
+          name: "Lint"
+          command: |
+            golint -set_exit_status **/*.go
+      - run:
+          name: "Run tests"
+          command: |
+            mkdir -p /tmp/artifacts
+            go test -v -coverprofile=/tmp/artifacts/profile.out -covermode=count ./logger
+            go tool cover -html=/tmp/artifacts/profile.out -o /tmp/artifacts/coverage.html
+            goveralls -coverprofile=/tmp/artifacts/profile.out -service=circleci -repotoken $COVERALLS_REPO_TOKEN
+      - store_artifacts:
+          path: /tmp/artifacts  
   build:
     machine: true
     steps:
