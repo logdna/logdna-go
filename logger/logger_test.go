@@ -1,308 +1,308 @@
 package logger
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-var key = "YOUR INGESTION KEY HERE"
+func TestLogger_CreateLogger(t *testing.T) {
+	t.Run("Base", func(t *testing.T) {
+		o := Options{
+			Level:      "info",
+			Hostname:   "foo",
+			App:        "test",
+			IPAddress:  "127.0.0.1",
+			MacAddress: "C0:FF:EE:C0:FF:EE",
+		}
 
-func TestMeta(t *testing.T) {
-	meta := Meta{}
-	nestedMeta := Meta{}
-	nestedMeta.Value = "nested field"
-	meta.Value = "custom field"
-	meta.Meta = &nestedMeta
+		l, err := CreateLogger(o, "abc123")
+		assert.Equal(t, nil, err)
+		assert.Equal(t, "abc123", l.Key)
+		assert.Equal(t, o.Level, l.Options.Level)
+		assert.Equal(t, o.Hostname, l.Options.Hostname)
+		assert.Equal(t, o.App, l.Options.App)
+		assert.Equal(t, o.IPAddress, l.Options.IPAddress)
+		assert.Equal(t, 5*time.Second, l.Options.FlushInterval)
+		assert.Equal(t, 5, l.Options.MaxBufferLen)
+		assert.Equal(t, defaultIngestURL, l.Options.IngestURL)
+	})
 
-	options := Options{
-		Level:      "fatal",
-		Hostname:   "gotest",
-		App:        "myapp",
-		IPAddress:  "10.0.1.101",
-		MacAddress: "C0:FF:EE:C0:FF:EE",
-		Env:        "production",
-		Tags:       "logging,golang",
-		Meta:       meta,
-		IndexMeta:  true,
-	}
+	t.Run("Invalid options", func(t *testing.T) {
+		o := Options{
+			Level: strings.Repeat("a", 33),
+		}
 
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	myLogger.Log("Message 1")
-	myLogger.Close()
+		_, err := CreateLogger(o, "abc123")
+		assert.Error(t, err)
+	})
 }
 
-func TestBufferLen(t *testing.T) {
-	options := Options{
-		Level:        "fatal",
-		Hostname:     "gotest",
-		App:          "myapp",
-		IPAddress:    "10.0.1.101",
-		MacAddress:   "C0:FF:EE:C0:FF:EE",
-		Env:          "production",
-		Tags:         "logging,golang",
-		MaxBufferLen: 10,
-	}
+func TestLogger_Log(t *testing.T) {
+	var head http.Header
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		head = r.Header
+		json.NewDecoder(r.Body).Decode(&body)
+	}))
+	defer ts.Close()
 
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	myLogger.Log("Message 1")
-	myLogger.Close()
-}
-
-func TestFlushInterval(t *testing.T) {
-	options := Options{
-		Level:         "fatal",
-		Hostname:      "gotest",
-		App:           "myapp",
-		IPAddress:     "10.0.1.101",
+	o := Options{
+		FlushInterval: 1 * time.Millisecond,
+		IngestURL:     ts.URL,
+		Level:         "info",
+		Hostname:      "foo",
+		App:           "test",
+		IPAddress:     "127.0.0.1",
 		MacAddress:    "C0:FF:EE:C0:FF:EE",
-		Env:           "production",
-		Tags:          "logging,golang",
-		FlushInterval: 10 * time.Second,
 	}
 
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	l, err := CreateLogger(o, "abc123")
+	assert.Equal(t, nil, err)
 
-	myLogger.Log("Message 1")
-	myLogger.Close()
+	l.Log("testing")
+	l.Close()
+
+	assert.NotEmpty(t, body)
+	assert.Equal(t, "abc123", body["apikey"])
+	assert.Equal(t, "foo", body["hostname"])
+	assert.Equal(t, "127.0.0.1", body["ip"])
+	assert.Equal(t, "C0:FF:EE:C0:FF:EE", body["mac"])
+	assert.NotEmpty(t, body["lines"])
+
+	ls := body["lines"].([]interface{})
+	line := ls[0].(map[string]interface{})
+	assert.Equal(t, "testing", line["line"])
+	assert.Equal(t, "info", line["level"])
+	assert.Equal(t, "test", line["app"])
+
+	assert.Equal(t, "application/json", head["Content-Type"][0])
+	assert.Equal(t, "abc123", head["Apikey"][0])
 }
 
-func TestInvalidLevelLength(t *testing.T) {
-	options := Options{}
-	options.Level = "fatalfatalfatalfatalfatalfatalfatalfatalfatalfatalfatalfatalfatal"
-	options.Hostname = "gotest"
-	options.App = "myapp"
-	options.IPAddress = "10.0.1.101"
-	options.MacAddress = "C0:FF:EE:C0:FF:EE"
-	options.Env = "production"
-	options.Tags = "logging,golang"
+func TestLogger_MaxBufferLen(t *testing.T) {
+	calls := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+	}))
+	defer ts.Close()
 
-	_, err := CreateLogger(options, key)
-	if err == nil {
-		t.Fatal("Error expected but not returned")
+	o := Options{
+		IngestURL:     ts.URL,
+		FlushInterval: 1 * time.Millisecond,
+		MaxBufferLen:  3,
 	}
+
+	l, err := CreateLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	n := 0
+	for n < 10 {
+		l.Log("Logging")
+		n++
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	// hit MaxBufferLen 3 times
+	assert.Equal(t, 9, calls)
+
+	// last message flushed after close
+	l.Close()
+	assert.Equal(t, 10, calls)
 }
 
-func TestInvalidAppLength(t *testing.T) {
-	options := Options{}
-	options.Level = "fatal"
-	options.Hostname = "gotest"
-	options.App = "myappmyappmyappmyappmyappmyappmyappmyappmyappmyapp"
-	options.IPAddress = "10.0.1.101"
-	options.MacAddress = "C0:FF:EE:C0:FF:EE"
-	options.Env = "production"
-	options.Tags = "logging,golang"
+func TestLogger_LogWithOptions(t *testing.T) {
+	t.Run("Base", func(t *testing.T) {
+		body := make(map[string](interface{}))
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			json.NewDecoder(r.Body).Decode(&body)
+		}))
+		defer ts.Close()
 
-	_, err := CreateLogger(options, key)
-	if err == nil {
-		t.Fatal("Error expected but not returned")
-	}
+		o := Options{
+			FlushInterval: 1 * time.Millisecond,
+			IngestURL:     ts.URL,
+			App:           "app",
+			Env:           "development",
+			Level:         "info",
+		}
+
+		l, err := CreateLogger(o, "abc123")
+		assert.Equal(t, nil, err)
+
+		l.LogWithOptions("testing", Options{
+			App:   "anotherapp",
+			Env:   "production",
+			Level: "error",
+		})
+		l.Close()
+
+		assert.NotEmpty(t, body)
+		assert.NotEmpty(t, body["lines"])
+
+		ls := body["lines"].([]interface{})
+		line := ls[0].(map[string]interface{})
+		assert.Equal(t, "testing", line["line"])
+		assert.Equal(t, "anotherapp", line["app"])
+		assert.Equal(t, "production", line["env"])
+		assert.Equal(t, "error", line["level"])
+	})
+
+	t.Run("Invalid options", func(t *testing.T) {
+		o := Options{
+			FlushInterval: 1 * time.Millisecond,
+			App:           "app",
+			Env:           "development",
+			Level:         "info",
+		}
+
+		l, err := CreateLogger(o, "abc123")
+		assert.Equal(t, nil, err)
+
+		err = l.LogWithOptions("testing", Options{
+			App: strings.Repeat("a", 33),
+		})
+
+		assert.Error(t, err)
+	})
 }
 
-func TestInvalidEnvLength(t *testing.T) {
-	meta := Meta{}
-	nestedMeta := Meta{}
-	nestedMeta.Value = "nested field"
-	meta.Value = "custom field"
-	meta.Meta = &nestedMeta
+func TestLogger_LogWithLevel(t *testing.T) {
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+	}))
+	defer ts.Close()
 
-	options := Options{}
-	options.Level = "fatal"
-	options.Hostname = "gotest"
-	options.App = "myapp"
-	options.IPAddress = "10.0.1.101"
-	options.MacAddress = "C0:FF:EE:C0:FF:EE"
-	options.Env = "productionproductionproductionproductionproductionproductionproduction"
-	options.Tags = "logging,golang"
-	options.Meta = meta
-	options.IndexMeta = true
-
-	_, err := CreateLogger(options, key)
-	if err == nil {
-		t.Fatal("Error expected but not returned")
+	o := Options{
+		FlushInterval: 1 * time.Millisecond,
+		IngestURL:     ts.URL,
+		Level:         "info",
 	}
+
+	l, err := CreateLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	l.LogWithLevel("testing", "error")
+	l.Close()
+
+	assert.NotEmpty(t, body)
+	assert.NotEmpty(t, body["lines"])
+
+	ls := body["lines"].([]interface{})
+	line := ls[0].(map[string]interface{})
+	assert.Equal(t, "testing", line["line"])
+	assert.Equal(t, "error", line["level"])
 }
 
-func TestInvalidHostnameLength(t *testing.T) {
-	meta := Meta{}
-	nestedMeta := Meta{}
-	nestedMeta.Value = "nested field"
-	meta.Value = "custom field"
-	meta.Meta = &nestedMeta
+func TestLogger_Log_withMeta(t *testing.T) {
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+	}))
+	defer ts.Close()
 
-	options := Options{}
-	options.Level = "fatal"
-	options.Hostname = "gotestgotestgotestgotestgotestgotestgotestgotestgotestgotest"
-	options.App = "myapp"
-	options.IPAddress = "10.0.1.101"
-	options.MacAddress = "C0:FF:EE:C0:FF:EE"
-	options.Env = "production"
-	options.Tags = "logging,golang"
-	options.Meta = meta
-	options.IndexMeta = true
-
-	_, err := CreateLogger(options, key)
-	if err == nil {
-		t.Fatal("Error expected but not returned")
+	meta := `{"key": "value", "key2": "value2"}`
+	o := Options{
+		FlushInterval: 1 * time.Millisecond,
+		IngestURL:     ts.URL,
+		IndexMeta:     false,
+		Meta:          meta,
 	}
+
+	l, err := CreateLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	l.Log("testing")
+	l.Close()
+
+	assert.NotEmpty(t, body)
+	assert.NotEmpty(t, body["lines"])
+
+	ls := body["lines"].([]interface{})
+	line := ls[0].(map[string]interface{})
+	assert.Equal(t, meta, line["meta"])
 }
 
-func TestInvalidMac(t *testing.T) {
-	meta := Meta{}
-	nestedMeta := Meta{}
-	nestedMeta.Value = "nested field"
-	meta.Value = "custom field"
-	meta.Meta = &nestedMeta
+func TestLogger_Log_withMetaIndexed(t *testing.T) {
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+	}))
+	defer ts.Close()
 
-	options := Options{}
-	options.Level = "fatal"
-	options.Hostname = "gotest"
-	options.App = "myapp"
-	options.IPAddress = "10.0.1.101"
-	options.MacAddress = "invalidmac"
-	options.Env = "production"
-	options.Tags = "logging,golang"
-	options.Meta = meta
-	options.IndexMeta = true
-
-	_, err := CreateLogger(options, key)
-	if err == nil {
-		t.Fatal("Error expected but not returned")
+	o := Options{
+		FlushInterval: 1 * time.Millisecond,
+		IngestURL:     ts.URL,
+		IndexMeta:     true,
+		Meta:          `{"key": "value", "key2": "value2"}`,
 	}
+
+	l, err := CreateLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	l.Log("testing")
+	l.Close()
+
+	assert.NotEmpty(t, body)
+	assert.NotEmpty(t, body["lines"])
+
+	ls := body["lines"].([]interface{})
+	line := ls[0].(map[string]interface{})
+	assert.NotEmpty(t, line["meta"])
+
+	meta := line["meta"].(map[string](interface{}))
+	assert.Equal(t, "value", meta["key"])
+	assert.Equal(t, "value2", meta["key2"])
 }
 
-func TestInvalidIp(t *testing.T) {
-	meta := Meta{}
-	nestedMeta := Meta{}
-	nestedMeta.Value = "nested field"
-	meta.Value = "custom field"
-	meta.Meta = &nestedMeta
+func TestLogger_Log_Levels(t *testing.T) {
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+	}))
+	defer ts.Close()
 
-	options := Options{}
-	options.Level = "fatal"
-	options.Hostname = "gotest"
-	options.App = "myapp"
-	options.IPAddress = "invalidip"
-	options.MacAddress = "C0:FF:EE:C0:FF:EE"
-	options.Env = "production"
-	options.Tags = "logging,golang"
-	options.Meta = meta
-	options.IndexMeta = true
-
-	_, err := CreateLogger(options, key)
-	if err == nil {
-		t.Fatal("Error expected but not returned")
-	}
-}
-
-func TestLevels(t *testing.T) {
-	options := Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
+	o := Options{
+		FlushInterval: 1 * time.Millisecond,
+		IngestURL:     ts.URL,
+		MaxBufferLen:  1,
 	}
 
-	myLogger.Info("Message 1")
-	myLogger.Warn("Message 2")
-	myLogger.Debug("Message 3")
-	myLogger.Error("Message 4")
-	myLogger.Fatal("Message 5")
-	myLogger.Critical("Message 6")
-	myLogger.Close()
-}
+	l, err := CreateLogger(o, "abc123")
+	assert.Equal(t, nil, err)
 
-func TestLogWithOptions(t *testing.T) {
-	options := Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
+	testCases := []struct {
+		label string
+		fn    func(string)
+		level string
+	}{
+		{"Info", l.Info, "info"},
+		{"Warn", l.Warn, "warn"},
+		{"Debug", l.Debug, "debug"},
+		{"Error", l.Error, "error"},
+		{"Fatal", l.Fatal, "fatal"},
+		{"Critical", l.Critical, "critical"},
 	}
 
-	otherOptions := Options{Level: "warning", Hostname: "gotest2", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-	myLogger.Log("Message 1")
-	err = myLogger.LogWithOptions("Message 2", otherOptions)
-	if err != nil {
-		t.Fatal(err)
+	for _, tc := range testCases {
+		t.Run(tc.label, func(t *testing.T) {
+			tc.fn("testing")
+			time.Sleep(100 * time.Millisecond)
+
+			assert.NotEmpty(t, body)
+			assert.NotEmpty(t, body["lines"])
+
+			ls := body["lines"].([]interface{})
+			line := ls[0].(map[string]interface{})
+			assert.Equal(t, tc.level, line["level"])
+			body = make(map[string](interface{}))
+		})
 	}
-
-	myLogger.Log("Message 3")
-	myLogger.Close()
-}
-
-func TestLogWithLevelAndApp(t *testing.T) {
-	options := Options{Level: "warning", Hostname: "gotest", App: "myapp"}
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	myLogger.Log("Message 1")
-	err = myLogger.LogWithLevelAndApp("Message 2", "error", "gotest2")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	myLogger.Log("Message 3")
-	myLogger.Close()
-}
-
-func TestMultipleLoggers(t *testing.T) {
-	meta := Meta{}
-	nestedMeta := Meta{}
-	nestedMeta.Value = "nested field"
-	meta.Value = "custom field"
-	meta.Meta = &nestedMeta
-
-	options := Options{
-		Level:      "fatal",
-		Hostname:   "gotest",
-		App:        "myapp",
-		IPAddress:  "10.0.1.101",
-		MacAddress: "C0:FF:EE:C0:FF:EE",
-		Env:        "production",
-		Tags:       "logging,golang",
-	}
-
-	myLogger, err := CreateLogger(options, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	myLogger.Log("Message 1")
-	myLogger.Info("Message 2")
-	myLogger.Debug("Message 3")
-	myLogger.Log("Message 4")
-	myLogger.Close()
-
-	options2 := Options{
-		Level:      "error",
-		Hostname:   "gotest",
-		App:        "myapp",
-		IPAddress:  "10.0.1.101",
-		MacAddress: "C0:FF:EE:C0:FF:EE",
-	}
-	myLogger2, err := CreateLogger(options2, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = myLogger2.LogWithOptions("Message 1", options)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	myLogger2.Log("Message 2")
-	myLogger2.Log("Message 3")
-	myLogger2.Log("Message 4")
-	myLogger2.Close()
 }

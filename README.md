@@ -6,6 +6,7 @@
 </p>
 
 [![CircleCI](https://circleci.com/gh/logdna/logdna-go/tree/master.svg?style=svg)](https://circleci.com/gh/logdna/logdna-go/tree/master)
+[![Coverage Status](https://coveralls.io/repos/github/logdna/logdna-go/badge.svg?branch=master)](https://coveralls.io/github/logdna/logdna-go?branch=master)
 [![GoDoc](https://godoc.org/github.com/logdna/logdna-go?status.svg)](https://godoc.org/github.com/logdna/logdna-go/logger)
 
 🚧 Work in progress 🚧
@@ -52,64 +53,51 @@ _**Required**_
 
 ## Usage
 
-After initial setup, logging is as simple as:
+After initial setup, logging looks like this:
 ```golang
 func main() {
     ...
+    myLogger, err := logger.CreateLogger(options, key)
     myLogger.Log("Message 1")
+    myLogger.Close()
 
     // Can also use Go's short-hand syntax for initializing structs to define all your options in just a single line:
-    options := logger.Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
-    myLogger, err := logger.CreateLogger(options, key)
+    options = logger.Options{Level: "error", Hostname: "gotest", App: "myapp", IPAddress: "10.0.1.101", MacAddress: "C0:FF:EE:C0:FF:EE"}
+    myLogger2, err := logger.CreateLogger(options, key)
+    myLogger2.Log("Message 2")
 
-    myLogger.Log("Message 2")
-
-    // Configure options, level and app with specific logs
+    // Configure options with specific logs
     newOptions := logger.Options{Level: "warning", Hostname: "gotest", App: "myotherapp", IPAddress: "10.0.1.101", MacAddress:  "C0:FF:EE:C0:FF:EE"}
-    errWithOpts := myLogger.LogWithOptions("Message 3", newOptions)
-    errLevelAndApp := myLogger.LogWithLevelAndApp("Message 4", "fatal", "gotest2")
-    myLogger.Close()
-}
-```
+    errWithOpts := myLogger2.LogWithOptions("Message 3", newOptions)
 
-This module also offers:
-```golang
-func main() {
-    ...
     // We support the following 6 levels
-    myLogger.Info("Message 1")
-    myLogger.Warn("Message 2")
-    myLogger.Debug("Message 3")
-    myLogger.Error("Message 4")
-    myLogger.Fatal("Message 5")
-    myLogger.Critical("Message 6")
+    myLogger2.Info("Message 1")
+    myLogger2.Warn("Message 2")
+    myLogger2.Debug("Message 3")
+    myLogger2.Error("Message 4")
+    myLogger2.Fatal("Message 5")
+    myLogger2.Critical("Message 6")
 
     // To add metadata to every log-line created by the logger instance:
-    meta := logger.Meta{}
-    nestedMeta := logger.Meta{}
-    nestedMeta.Value = "nested field"
-    meta.Value = "custom field"
-    meta.Meta = &nestedMeta
-
-    options.Meta = meta
-
-    myLogger, err := logger.CreateLogger(options, key)
-
-    myLogger.Log("Message 7")
-    myLogger.Close()
+    options.Meta = `{"key": "value", "key2": "value2"}`
+    myLogger3, err := logger.CreateLogger(options, key)
+    myLogger3.Log("Message 7")
+    myLogger3.Close()
 }
 ```
 You will see these logs in your LogDNA dashboard! Make sure to run .Close() when done with using the logger.
 
 ## Tests
-To run a specific test in the provided test suite add your ingestion key under key and run:
+
+Run all tests in the test suite:
+
 ```
-go test -run TestName
+go test ./logger
 ```
 
-To run all the tests in the test suite run:
+Run a specific test:
 ```
-go test -run ''
+go test ./logger -run ^TestLogger_LogWithOptions$
 ```
 
 For more information on testing see: https://golang.org/pkg/testing/
@@ -221,9 +209,9 @@ MaxBufferLen sets the number of logs that are buffered before data is flushed an
 ##### Meta
 
 * _**Optional**_
-* Type: `struct`
+* Type: `string`
 
-A meta object for additional metadata about the log line that is passed.
+A JSON string containing additional metadata about the log line that is passed.
 
 ##### Tags
 
