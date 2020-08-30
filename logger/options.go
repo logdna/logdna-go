@@ -8,7 +8,12 @@ import (
 	"time"
 )
 
-var defaultIngestURL = "https://logs.logdna.com/logs/ingest"
+var (
+	defaultIngestURL     = "https://logs.logdna.com/logs/ingest"
+	defaultSendTimeout   = 5 * time.Second
+	defaultFlushInterval = 250 * time.Millisecond
+	defaultMaxBufferLen  = 50
+)
 
 // InvalidOptionMessage represents an issue with the supplied configuration.
 type InvalidOptionMessage struct {
@@ -22,6 +27,7 @@ type Options struct {
 	App           string
 	Env           string
 	FlushInterval time.Duration
+	SendTimeout   time.Duration
 	Hostname      string
 	IndexMeta     bool
 	IngestURL     string
@@ -92,11 +98,14 @@ func (options Options) merge(merge Options) Options {
 }
 
 func (options *Options) setDefaults() {
+	if options.SendTimeout == 0 {
+		options.SendTimeout = defaultSendTimeout
+	}
 	if options.FlushInterval == 0 {
-		options.FlushInterval = 5 * time.Second
+		options.FlushInterval = defaultFlushInterval
 	}
 	if options.MaxBufferLen == 0 {
-		options.MaxBufferLen = 5
+		options.MaxBufferLen = defaultMaxBufferLen
 	}
 	if options.IngestURL == "" {
 		options.IngestURL = defaultIngestURL
