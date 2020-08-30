@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOptions_validate(t *testing.T) {
+func TestOptions_Validate(t *testing.T) {
 	testCases := []struct {
 		label   string
 		options Options
@@ -37,7 +37,7 @@ func TestOptions_validate(t *testing.T) {
 	}
 }
 
-func TestOptions_merge(t *testing.T) {
+func TestOptions_Merge(t *testing.T) {
 	o := Options{
 		App:   "app",
 		Env:   "development",
@@ -58,15 +58,16 @@ func TestOptions_merge(t *testing.T) {
 	assert.Equal(t, `{"baz": "merge"}`, o.Meta)
 }
 
-func TestOptions_setDefaults(t *testing.T) {
+func TestOptions_SetDefaults(t *testing.T) {
 	t.Run("Sets defaults", func(t *testing.T) {
 		o := Options{}
 		err := o.validate()
 		assert.Equal(t, nil, err)
 
 		o.setDefaults()
-		assert.Equal(t, 5*time.Second, o.FlushInterval)
-		assert.Equal(t, 5, o.MaxBufferLen)
+		assert.Equal(t, defaultSendTimeout, o.SendTimeout)
+		assert.Equal(t, defaultFlushInterval, o.FlushInterval)
+		assert.Equal(t, defaultMaxBufferLen, o.MaxBufferLen)
 		assert.Equal(t, defaultIngestURL, o.IngestURL)
 	})
 
@@ -76,6 +77,8 @@ func TestOptions_setDefaults(t *testing.T) {
 		assert.Equal(t, nil, err)
 
 		o.setDefaults()
+
+		assert.Equal(t, defaultSendTimeout, o.SendTimeout)
 		assert.Equal(t, 10*time.Second, o.FlushInterval)
 		assert.Equal(t, 10, o.MaxBufferLen)
 		assert.Equal(t, "https://example.org", o.IngestURL)

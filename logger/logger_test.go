@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLogger_CreateLogger(t *testing.T) {
+func TestLogger_NewLogger(t *testing.T) {
 	t.Run("Base", func(t *testing.T) {
 		o := Options{
 			Level:      "info",
@@ -21,15 +21,14 @@ func TestLogger_CreateLogger(t *testing.T) {
 			MacAddress: "C0:FF:EE:C0:FF:EE",
 		}
 
-		l, err := CreateLogger(o, "abc123")
+		l, err := NewLogger(o, "abc123")
 		assert.Equal(t, nil, err)
-		assert.Equal(t, "abc123", l.Key)
 		assert.Equal(t, o.Level, l.Options.Level)
 		assert.Equal(t, o.Hostname, l.Options.Hostname)
 		assert.Equal(t, o.App, l.Options.App)
 		assert.Equal(t, o.IPAddress, l.Options.IPAddress)
-		assert.Equal(t, 5*time.Second, l.Options.FlushInterval)
-		assert.Equal(t, 5, l.Options.MaxBufferLen)
+		assert.Equal(t, defaultFlushInterval, l.Options.FlushInterval)
+		assert.Equal(t, defaultMaxBufferLen, l.Options.MaxBufferLen)
 		assert.Equal(t, defaultIngestURL, l.Options.IngestURL)
 	})
 
@@ -38,7 +37,7 @@ func TestLogger_CreateLogger(t *testing.T) {
 			Level: strings.Repeat("a", 33),
 		}
 
-		_, err := CreateLogger(o, "abc123")
+		_, err := NewLogger(o, "abc123")
 		assert.Error(t, err)
 	})
 }
@@ -49,20 +48,20 @@ func TestLogger_Log(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		head = r.Header
 		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
 	}))
 	defer ts.Close()
 
 	o := Options{
-		FlushInterval: 1 * time.Millisecond,
-		IngestURL:     ts.URL,
-		Level:         "info",
-		Hostname:      "foo",
-		App:           "test",
-		IPAddress:     "127.0.0.1",
-		MacAddress:    "C0:FF:EE:C0:FF:EE",
+		IngestURL:  ts.URL,
+		Level:      "info",
+		Hostname:   "foo",
+		App:        "test",
+		IPAddress:  "127.0.0.1",
+		MacAddress: "C0:FF:EE:C0:FF:EE",
 	}
 
-	l, err := CreateLogger(o, "abc123")
+	l, err := NewLogger(o, "abc123")
 	assert.Equal(t, nil, err)
 
 	l.Log("testing")
@@ -76,6 +75,8 @@ func TestLogger_Log(t *testing.T) {
 	assert.NotEmpty(t, body["lines"])
 
 	ls := body["lines"].([]interface{})
+	assert.Equal(t, 1, len(ls))
+
 	line := ls[0].(map[string]interface{})
 	assert.Equal(t, "testing", line["line"])
 	assert.Equal(t, "info", line["level"])
@@ -85,55 +86,23 @@ func TestLogger_Log(t *testing.T) {
 	assert.Equal(t, "abc123", head["Apikey"][0])
 }
 
-func TestLogger_MaxBufferLen(t *testing.T) {
-	calls := 0
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
-	}))
-	defer ts.Close()
-
-	o := Options{
-		IngestURL:     ts.URL,
-		FlushInterval: 1 * time.Millisecond,
-		MaxBufferLen:  3,
-	}
-
-	l, err := CreateLogger(o, "abc123")
-	assert.Equal(t, nil, err)
-
-	n := 0
-	for n < 10 {
-		l.Log("Logging")
-		n++
-	}
-
-	time.Sleep(100 * time.Millisecond)
-
-	// hit MaxBufferLen 3 times
-	assert.Equal(t, 9, calls)
-
-	// last message flushed after close
-	l.Close()
-	assert.Equal(t, 10, calls)
-}
-
 func TestLogger_LogWithOptions(t *testing.T) {
 	t.Run("Base", func(t *testing.T) {
 		body := make(map[string](interface{}))
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			json.NewDecoder(r.Body).Decode(&body)
+			json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
 		}))
 		defer ts.Close()
 
 		o := Options{
-			FlushInterval: 1 * time.Millisecond,
-			IngestURL:     ts.URL,
-			App:           "app",
-			Env:           "development",
-			Level:         "info",
+			IngestURL: ts.URL,
+			App:       "app",
+			Env:       "development",
+			Level:     "info",
 		}
 
-		l, err := CreateLogger(o, "abc123")
+		l, err := NewLogger(o, "abc123")
 		assert.Equal(t, nil, err)
 
 		l.LogWithOptions("testing", Options{
@@ -156,13 +125,12 @@ func TestLogger_LogWithOptions(t *testing.T) {
 
 	t.Run("Invalid options", func(t *testing.T) {
 		o := Options{
-			FlushInterval: 1 * time.Millisecond,
-			App:           "app",
-			Env:           "development",
-			Level:         "info",
+			App:   "app",
+			Env:   "development",
+			Level: "info",
 		}
 
-		l, err := CreateLogger(o, "abc123")
+		l, err := NewLogger(o, "abc123")
 		assert.Equal(t, nil, err)
 
 		err = l.LogWithOptions("testing", Options{
@@ -177,16 +145,16 @@ func TestLogger_LogWithLevel(t *testing.T) {
 	body := make(map[string](interface{}))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
 	}))
 	defer ts.Close()
 
 	o := Options{
-		FlushInterval: 1 * time.Millisecond,
-		IngestURL:     ts.URL,
-		Level:         "info",
+		IngestURL: ts.URL,
+		Level:     "info",
 	}
 
-	l, err := CreateLogger(o, "abc123")
+	l, err := NewLogger(o, "abc123")
 	assert.Equal(t, nil, err)
 
 	l.LogWithLevel("testing", "error")
@@ -201,22 +169,22 @@ func TestLogger_LogWithLevel(t *testing.T) {
 	assert.Equal(t, "error", line["level"])
 }
 
-func TestLogger_Log_withMeta(t *testing.T) {
+func TestLogger_LogWithMeta(t *testing.T) {
 	body := make(map[string](interface{}))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
 	}))
 	defer ts.Close()
 
 	meta := `{"key": "value", "key2": "value2"}`
 	o := Options{
-		FlushInterval: 1 * time.Millisecond,
-		IngestURL:     ts.URL,
-		IndexMeta:     false,
-		Meta:          meta,
+		IngestURL: ts.URL,
+		IndexMeta: false,
+		Meta:      meta,
 	}
 
-	l, err := CreateLogger(o, "abc123")
+	l, err := NewLogger(o, "abc123")
 	assert.Equal(t, nil, err)
 
 	l.Log("testing")
@@ -230,21 +198,21 @@ func TestLogger_Log_withMeta(t *testing.T) {
 	assert.Equal(t, meta, line["meta"])
 }
 
-func TestLogger_Log_withMetaIndexed(t *testing.T) {
+func TestLogger_LogWithMetaIndexed(t *testing.T) {
 	body := make(map[string](interface{}))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
 	}))
 	defer ts.Close()
 
 	o := Options{
-		FlushInterval: 1 * time.Millisecond,
-		IngestURL:     ts.URL,
-		IndexMeta:     true,
-		Meta:          `{"key": "value", "key2": "value2"}`,
+		IngestURL: ts.URL,
+		IndexMeta: true,
+		Meta:      `{"key": "value", "key2": "value2"}`,
 	}
 
-	l, err := CreateLogger(o, "abc123")
+	l, err := NewLogger(o, "abc123")
 	assert.Equal(t, nil, err)
 
 	l.Log("testing")
@@ -262,20 +230,22 @@ func TestLogger_Log_withMetaIndexed(t *testing.T) {
 	assert.Equal(t, "value2", meta["key2"])
 }
 
-func TestLogger_Log_Levels(t *testing.T) {
+func TestLogger_LogLevels(t *testing.T) {
 	body := make(map[string](interface{}))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
 	}))
 	defer ts.Close()
 
+	fi := 100 * time.Millisecond
 	o := Options{
-		FlushInterval: 1 * time.Millisecond,
 		IngestURL:     ts.URL,
 		MaxBufferLen:  1,
+		FlushInterval: fi,
 	}
 
-	l, err := CreateLogger(o, "abc123")
+	l, err := NewLogger(o, "abc123")
 	assert.Equal(t, nil, err)
 
 	testCases := []struct {
@@ -294,15 +264,111 @@ func TestLogger_Log_Levels(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.label, func(t *testing.T) {
 			tc.fn("testing")
-			time.Sleep(100 * time.Millisecond)
+			// wait for flush interval
+			time.Sleep(fi)
 
-			assert.NotEmpty(t, body)
-			assert.NotEmpty(t, body["lines"])
+			if assert.NotEmpty(t, body) {
+				assert.NotEmpty(t, body["lines"])
 
-			ls := body["lines"].([]interface{})
-			line := ls[0].(map[string]interface{})
-			assert.Equal(t, tc.level, line["level"])
-			body = make(map[string](interface{}))
+				ls := body["lines"].([]interface{})
+				line := ls[0].(map[string]interface{})
+				assert.Equal(t, tc.level, line["level"])
+				body = make(map[string](interface{}))
+			}
 		})
 	}
+}
+
+func TestLogger_TransportBatches(t *testing.T) {
+	calls := 0
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		json.NewDecoder(r.Body).Decode(&body)
+	}))
+	defer ts.Close()
+
+	o := Options{IngestURL: ts.URL}
+	l, err := NewLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	l.Log("testing")
+	l.Info("testing")
+	l.Warn("testing")
+	l.Error("testing")
+	l.Close()
+
+	assert.NotEmpty(t, body)
+	assert.NotEmpty(t, body["lines"])
+	assert.Equal(t, 1, calls)
+
+	ls := body["lines"].([]interface{})
+	assert.Equal(t, 4, len(ls))
+}
+
+func TestLogger_TransportFlushInterval(t *testing.T) {
+	calls := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
+	}))
+	defer ts.Close()
+
+	fi := 50 * time.Millisecond
+	o := Options{
+		IngestURL:     ts.URL,
+		MaxBufferLen:  3,
+		FlushInterval: fi,
+	}
+
+	l, err := NewLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	l.Log("testing0")
+
+	// wait for flush
+	time.Sleep(2 * fi)
+
+	// flushed after Options.FlushInterval
+	assert.Equal(t, 1, calls)
+
+	// flushed after Options.MaxBufferSize
+	l.Log("testing1")
+	l.Log("testing2")
+	l.Log("testing3")
+
+	// flushed when Close completes
+	l.Log("testing4")
+
+	l.Close()
+	assert.Equal(t, 3, calls)
+}
+
+func TestLogger_TransportMaxBufferLen(t *testing.T) {
+	calls := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
+	}))
+	defer ts.Close()
+
+	o := Options{
+		IngestURL:    ts.URL,
+		MaxBufferLen: 3,
+	}
+
+	l, err := NewLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	n := 0
+	for n < 10 {
+		l.Log("Logging")
+		n++
+	}
+
+	l.Close()
+
+	// MaxBufferLen reached 3 times
+	// final flush after Close completes
+	assert.Equal(t, 4, calls)
 }
