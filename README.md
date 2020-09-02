@@ -5,9 +5,9 @@
   <p align="center">Go library for logging to <a href="https://app.logdna.com">LogDNA</a></p>
 </p>
 
-[![CircleCI](https://circleci.com/gh/logdna/logdna-go/tree/master.svg?style=svg)](https://circleci.com/gh/logdna/logdna-go/tree/master)
-[![Coverage Status](https://coveralls.io/repos/github/logdna/logdna-go/badge.svg?branch=master)](https://coveralls.io/github/logdna/logdna-go?branch=master)
-[![GoDoc](https://godoc.org/github.com/logdna/logdna-go?status.svg)](https://godoc.org/github.com/logdna/logdna-go/logger)
+[![CircleCI](https://circleci.com/gh/logdna/logger-go/tree/master.svg?style=svg)](https://circleci.com/gh/logdna/logdna-go/tree/master)
+[![Coverage Status](https://coveralls.io/repos/github/logdna/logger-go/badge.svg?branch=master)](https://coveralls.io/github/logdna/logdna-go?branch=master)
+[![GoDoc](https://godoc.org/github.com/logdna/logger-go?status.svg)](https://godoc.org/github.com/logdna/logdna-go/logger)
 
 🚧 Work in progress 🚧
 
@@ -22,13 +22,13 @@
 ## Install
 
 ```
-go get github.com/logdna/logdna-go
+go get github.com/logdna/logger-go
 ```
 
 ## Setup
 ```golang
 import (
-    "github.com/logdna/logdna-go/logger"
+    "github.com/logdna/logger-go"
 )
 
 func main() {
@@ -92,12 +92,12 @@ You will see these logs in your LogDNA dashboard! Make sure to run .Close() when
 Run all tests in the test suite:
 
 ```
-go test ./logger
+go test
 ```
 
 Run a specific test:
 ```
-go test ./logger -run ^TestLogger_LogWithOptions$
+go test -run ^TestLogger_LogWithOptions$
 ```
 
 For more information on testing see: https://golang.org/pkg/testing/
