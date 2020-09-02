@@ -98,6 +98,12 @@ func (t *transport) send(msgs []Message) error {
 			Level: msg.Options.Level,
 		}
 
+		timestamp := msg.Options.Timestamp
+		if timestamp.IsZero() {
+			timestamp = time.Now()
+		}
+		line.Timestamp = timestamp.UnixNano() / int64(time.Millisecond)
+
 		if msg.Options.Meta != "" {
 			line.Meta = metaEnvelope{
 				indexed: msg.Options.IndexMeta,

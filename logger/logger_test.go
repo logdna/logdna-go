@@ -81,6 +81,7 @@ func TestLogger_Log(t *testing.T) {
 	assert.Equal(t, "testing", line["line"])
 	assert.Equal(t, "info", line["level"])
 	assert.Equal(t, "test", line["app"])
+	assert.NotEmpty(t, line["timestamp"])
 
 	assert.Equal(t, "application/json", head["Content-Type"][0])
 	assert.Equal(t, "abc123", head["Apikey"][0])
@@ -95,11 +96,14 @@ func TestLogger_LogWithOptions(t *testing.T) {
 		}))
 		defer ts.Close()
 
+		now := time.Now()
+
 		o := Options{
 			IngestURL: ts.URL,
 			App:       "app",
 			Env:       "development",
 			Level:     "info",
+			Timestamp: now,
 		}
 
 		l, err := NewLogger(o, "abc123")
@@ -121,6 +125,7 @@ func TestLogger_LogWithOptions(t *testing.T) {
 		assert.Equal(t, "anotherapp", line["app"])
 		assert.Equal(t, "production", line["env"])
 		assert.Equal(t, "error", line["level"])
+		assert.Equal(t, now.UnixNano()/int64(time.Millisecond), int64(line["timestamp"].(float64)))
 	})
 
 	t.Run("Invalid options", func(t *testing.T) {
@@ -167,6 +172,7 @@ func TestLogger_LogWithLevel(t *testing.T) {
 	line := ls[0].(map[string]interface{})
 	assert.Equal(t, "testing", line["line"])
 	assert.Equal(t, "error", line["level"])
+	assert.NotEmpty(t, line["timestamp"])
 }
 
 func TestLogger_LogWithMeta(t *testing.T) {
@@ -196,6 +202,7 @@ func TestLogger_LogWithMeta(t *testing.T) {
 	ls := body["lines"].([]interface{})
 	line := ls[0].(map[string]interface{})
 	assert.Equal(t, meta, line["meta"])
+	assert.NotEmpty(t, line["timestamp"])
 }
 
 func TestLogger_LogWithMetaIndexed(t *testing.T) {
@@ -224,6 +231,7 @@ func TestLogger_LogWithMetaIndexed(t *testing.T) {
 	ls := body["lines"].([]interface{})
 	line := ls[0].(map[string]interface{})
 	assert.NotEmpty(t, line["meta"])
+	assert.NotEmpty(t, line["timestamp"])
 
 	meta := line["meta"].(map[string](interface{}))
 	assert.Equal(t, "value", meta["key"])

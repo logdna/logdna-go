@@ -31,11 +31,12 @@ type Payload struct {
 
 // Line contains properties related to an individual log message.
 type Line struct {
-	App   string       `json:"app,omitempty"`
-	Body  string       `json:"line,omitempty"`
-	Level string       `json:"level,omitempty"`
-	Env   string       `json:"env,omitempty"`
-	Meta  metaEnvelope `json:"meta,omitempty"`
+	Body      string       `json:"line"`
+	Timestamp int64        `json:"timestamp"`
+	App       string       `json:"app,omitempty"`
+	Level     string       `json:"level,omitempty"`
+	Env       string       `json:"env,omitempty"`
+	Meta      metaEnvelope `json:"meta,omitempty"`
 }
 
 type ingestAPIResponse struct {
