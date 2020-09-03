@@ -34,7 +34,7 @@ func TestLogger_NewLogger(t *testing.T) {
 
 	t.Run("Invalid options", func(t *testing.T) {
 		o := Options{
-			Level: strings.Repeat("a", 33),
+			Level: strings.Repeat("a", 83),
 		}
 
 		_, err := NewLogger(o, "abc123")
@@ -71,7 +71,7 @@ func TestLogger_Log(t *testing.T) {
 	assert.Equal(t, "abc123", body["apikey"])
 	assert.Equal(t, "foo", body["hostname"])
 	assert.Equal(t, "127.0.0.1", body["ip"])
-	assert.Equal(t, "C0:FF:EE:C0:FF:EE", body["mac"])
+	assert.Equal(t, "c0:ff:ee:c0:ff:ee", body["mac"])
 	assert.NotEmpty(t, body["lines"])
 
 	ls := body["lines"].([]interface{})
@@ -126,6 +126,7 @@ func TestLogger_LogWithOptions(t *testing.T) {
 		assert.Equal(t, "production", line["env"])
 		assert.Equal(t, "error", line["level"])
 		assert.Equal(t, now.UnixNano()/int64(time.Millisecond), int64(line["timestamp"].(float64)))
+
 	})
 
 	t.Run("Invalid options", func(t *testing.T) {
@@ -139,7 +140,7 @@ func TestLogger_LogWithOptions(t *testing.T) {
 		assert.Equal(t, nil, err)
 
 		err = l.LogWithOptions("testing", Options{
-			App: strings.Repeat("a", 33),
+			App: strings.Repeat("a", 83),
 		})
 
 		assert.Error(t, err)

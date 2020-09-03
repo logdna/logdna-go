@@ -145,8 +145,6 @@ func (t *transport) send(msgs []Message) error {
 		return fmt.Errorf("Server error: %d", resp.StatusCode)
 	}
 
-	// TODO(mdeltito): do we need to parse the response?
-	// we arent doing anything with it
 	var apiresp ingestAPIResponse
 	err = json.NewDecoder(resp.Body).Decode(&apiresp)
 	if err != nil {
