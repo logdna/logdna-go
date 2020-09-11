@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-var (
+const (
 	defaultIngestURL     = "https://logs.logdna.com/logs/ingest"
-	defaultSendTimeout   = 5 * time.Second
+	defaultSendTimeout   = 30 * time.Second
 	defaultFlushInterval = 250 * time.Millisecond
 	defaultMaxBufferLen  = 50
 )
