@@ -37,6 +37,7 @@ type Options struct {
 	MaxBufferLen  int
 	Meta          string
 	Tags          string
+	Timestamp     time.Time
 }
 
 func (e InvalidOptionMessage) String() string {
@@ -104,10 +105,10 @@ func (options *Options) setDefaults() {
 	if options.FlushInterval == 0 {
 		options.FlushInterval = defaultFlushInterval
 	}
-	if options.MaxBufferLen == 0 {
-		options.MaxBufferLen = defaultMaxBufferLen
-	}
 	if options.IngestURL == "" {
 		options.IngestURL = defaultIngestURL
+	}
+	if options.MaxBufferLen == 0 {
+		options.MaxBufferLen = defaultMaxBufferLen
 	}
 }
