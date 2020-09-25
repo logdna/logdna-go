@@ -103,16 +103,17 @@ func TestLogger_LogWithOptions(t *testing.T) {
 			App:       "app",
 			Env:       "development",
 			Level:     "info",
-			Timestamp: now,
 		}
 
 		l, err := NewLogger(o, "abc123")
 		assert.Equal(t, nil, err)
 
-		l.LogWithOptions("testing", Options{
-			App:   "anotherapp",
-			Env:   "production",
-			Level: "error",
+		l.LogWithOptions("testing", MessageOptions{
+			App:       "anotherapp",
+			Env:       "production",
+			Level:     "error",
+			Timestamp: now,
+			Meta:      `{"key": "value", "key2": "value2"}`,
 		})
 		l.Close()
 
@@ -126,7 +127,7 @@ func TestLogger_LogWithOptions(t *testing.T) {
 		assert.Equal(t, "production", line["env"])
 		assert.Equal(t, "error", line["level"])
 		assert.Equal(t, now.UnixNano()/int64(time.Millisecond), int64(line["timestamp"].(float64)))
-
+		assert.NotEmpty(t, line["meta"])
 	})
 
 	t.Run("Invalid options", func(t *testing.T) {
@@ -139,7 +140,7 @@ func TestLogger_LogWithOptions(t *testing.T) {
 		l, err := NewLogger(o, "abc123")
 		assert.Equal(t, nil, err)
 
-		err = l.LogWithOptions("testing", Options{
+		err = l.LogWithOptions("testing", MessageOptions{
 			App: strings.Repeat("a", 83),
 		})
 
