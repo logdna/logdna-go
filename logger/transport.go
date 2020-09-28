@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/avast/retry-go"
 )
 
 type transport struct {
@@ -19,6 +21,10 @@ type transport struct {
 	mu sync.Mutex
 	wg sync.WaitGroup
 }
+
+var (
+	defaultAttempts = uint(2)
+)
 
 func newTransport(options Options, key string) *transport {
 	t := transport{
@@ -88,7 +94,7 @@ func (t *transport) flushSend() {
 	}()
 }
 
-func (t *transport) send(msgs []Message) error {
+func (t *transport) send(msgs []Message) {
 	var lines []Line
 	for _, msg := range msgs {
 		line := Line{
@@ -125,7 +131,7 @@ func (t *transport) send(msgs []Message) error {
 
 	pbytes, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
 
 	req, err := http.NewRequest("POST", t.options.IngestURL, bytes.NewBuffer(pbytes))
@@ -134,22 +140,24 @@ func (t *transport) send(msgs []Message) error {
 	req.Header.Set("Content-type", "application/json")
 
 	client := &http.Client{Timeout: t.options.SendTimeout}
-	resp, err := client.Do(req)
+	err = retry.Do(
+		func() error {
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
 
+			if resp.StatusCode == 500 {
+				fmt.Println(fmt.Errorf("Server error: %d", resp.StatusCode))
+				return fmt.Errorf("Server error: %d", resp.StatusCode)
+			}
+			return nil
+		},
+		retry.Attempts(defaultAttempts),
+		retry.LastErrorOnly(true),
+	)
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 500 {
-		return fmt.Errorf("Server error: %d", resp.StatusCode)
-	}
-
-	var apiresp ingestAPIResponse
-	err = json.NewDecoder(resp.Body).Decode(&apiresp)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
