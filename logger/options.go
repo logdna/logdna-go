@@ -16,29 +16,40 @@ const (
 	maxOptionLength      = 80
 )
 
+var reHostname = regexp.MustCompile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$`)
+
 // InvalidOptionMessage represents an issue with the supplied configuration.
 type InvalidOptionMessage struct {
 	Option  string
 	Message string
 }
 
-// Options encapsulates user-provided options such as the Level and App
-// that are passed along with each log.
+// Options encapsulates the Logger-level options as well as default
+// values for messages logged through a Logger instance.
 type Options struct {
 	App           string
 	Env           string
+	Level         string
+	Meta          string
 	FlushInterval time.Duration
 	SendTimeout   time.Duration
 	Hostname      string
 	IndexMeta     bool
 	IngestURL     string
 	IPAddress     string
-	Level         string
 	MacAddress    string
 	MaxBufferLen  int
-	Meta          string
 	Tags          string
-	Timestamp     time.Time
+}
+
+// MessageOptions defines Message-specific options for overriding
+// values from the Logger instance.
+type MessageOptions struct {
+	App       string
+	Env       string
+	Level     string
+	Meta      string
+	Timestamp time.Time
 }
 
 type fieldIssue struct {
@@ -67,7 +78,6 @@ func validateOptionLength(option string, value string) *fieldIssue {
 }
 
 func (options *Options) validate() error {
-	reHostname := regexp.MustCompile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$`)
 	var issues []fieldIssue
 
 	if issue := validateOptionLength("App", options.App); issue != nil {
@@ -104,22 +114,23 @@ func (options *Options) validate() error {
 	return nil
 }
 
-func (options Options) merge(merge Options) Options {
-	newOpts := options
-	if merge.App != "" {
-		newOpts.App = merge.App
+func (options *MessageOptions) validate() error {
+	var issues []fieldIssue
+
+	if issue := validateOptionLength("App", options.App); issue != nil {
+		issues = append(issues, *issue)
 	}
-	if merge.Env != "" {
-		newOpts.Env = merge.Env
+	if issue := validateOptionLength("Env", options.Env); issue != nil {
+		issues = append(issues, *issue)
 	}
-	if merge.Level != "" {
-		newOpts.Level = merge.Level
-	}
-	if merge.Meta != "" {
-		newOpts.Meta = merge.Meta
+	if issue := validateOptionLength("Level", options.Level); issue != nil {
+		issues = append(issues, *issue)
 	}
 
-	return newOpts
+	if len(issues) > 0 {
+		return &optionsError{issues: issues}
+	}
+	return nil
 }
 
 func (options *Options) setDefaults() {

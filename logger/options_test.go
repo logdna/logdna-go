@@ -38,27 +38,6 @@ func TestOptions_Validate(t *testing.T) {
 	}
 }
 
-func TestOptions_Merge(t *testing.T) {
-	o := Options{
-		App:   "app",
-		Env:   "development",
-		Level: "info",
-		Meta:  `{"foo": "bar"}`,
-	}
-
-	o = o.merge(Options{
-		App:   "merge",
-		Env:   "merge",
-		Level: "merge",
-		Meta:  `{"baz": "merge"}`,
-	})
-
-	assert.Equal(t, "merge", o.App)
-	assert.Equal(t, "merge", o.Env)
-	assert.Equal(t, "merge", o.Level)
-	assert.Equal(t, `{"baz": "merge"}`, o.Meta)
-}
-
 func TestOptions_SetDefaults(t *testing.T) {
 	t.Run("Sets defaults", func(t *testing.T) {
 		o := Options{}
