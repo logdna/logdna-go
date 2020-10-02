@@ -23,12 +23,12 @@ jobs:
       - run:
           name: "Lint"
           command: |
-            golint -set_exit_status **/*.go
+            golint -set_exit_status *.go
       - run:
           name: "Run tests"
           command: |
             mkdir -p /tmp/artifacts
-            go test -v -coverprofile=/tmp/artifacts/profile.out -covermode=count ./logger
+            go test -v -coverprofile=/tmp/artifacts/profile.out -covermode=count 
             go tool cover -html=/tmp/artifacts/profile.out -o /tmp/artifacts/coverage.html
             goveralls -coverprofile=/tmp/artifacts/profile.out -service=circleci -repotoken $COVERALLS_REPO_TOKEN
       - store_artifacts:
@@ -39,7 +39,7 @@ jobs:
       - checkout
       - run:
           name: ZIP the Codebase
-          command: zip logdna-go.zip -r logger/logdna.go go.mod
+          command: zip logdna-go.zip -r logger.go logger_test.go options.go options_test.go go.mod
       - persist_to_workspace:
           root: .
           paths:
