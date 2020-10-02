@@ -87,6 +87,30 @@ func TestLogger_Log(t *testing.T) {
 	assert.Equal(t, "abc123", head["Apikey"][0])
 }
 
+func TestLogger_Retry(t *testing.T) {
+	body := make(map[string](interface{}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(ingestAPIResponse{status: "ok"})
+	}))
+	defer ts.Close()
+
+	o := Options{
+		IngestURL:  "invalid url",
+		Level:      "info",
+		Hostname:   "foo",
+		App:        "test",
+		IPAddress:  "127.0.0.1",
+		MacAddress: "C0:FF:EE:C0:FF:EE",
+	}
+
+	l, err := NewLogger(o, "abc123")
+	assert.Equal(t, nil, err)
+
+	l.Log("testing")
+	l.Close()
+}
+
 func TestLogger_LogWithOptions(t *testing.T) {
 	t.Run("Base", func(t *testing.T) {
 		body := make(map[string](interface{}))
