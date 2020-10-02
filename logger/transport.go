@@ -13,14 +13,14 @@ import (
 type transport struct {
 	key     string
 	buffer  []Message
-	options Options
+	options *Options
 	done    chan struct{}
 
 	mu sync.Mutex
 	wg sync.WaitGroup
 }
 
-func newTransport(options Options, key string) *transport {
+func newTransport(options *Options, key string) *transport {
 	t := transport{
 		key:     key,
 		options: options,
@@ -91,23 +91,46 @@ func (t *transport) flushSend() {
 func (t *transport) send(msgs []Message) error {
 	var lines []Line
 	for _, msg := range msgs {
-		line := Line{
-			Body:  msg.Body,
-			App:   msg.Options.App,
-			Env:   msg.Options.Env,
-			Level: msg.Options.Level,
+		var app string
+		if msg.Options.App != "" {
+			app = msg.Options.App
+		} else {
+			app = t.options.App
 		}
 
-		timestamp := msg.Options.Timestamp
-		if timestamp.IsZero() {
-			timestamp = time.Now()
+		var env string
+		if msg.Options.Env != "" {
+			env = msg.Options.Env
+		} else {
+			env = t.options.Env
 		}
-		line.Timestamp = timestamp.UnixNano() / int64(time.Millisecond)
 
+		var level string
+		if msg.Options.Level != "" {
+			level = msg.Options.Level
+		} else {
+			level = t.options.Level
+		}
+
+		var meta string
 		if msg.Options.Meta != "" {
+			meta = msg.Options.Meta
+		} else {
+			meta = t.options.Meta
+		}
+
+		line := Line{
+			Body:      msg.Body,
+			Timestamp: msg.Timestamp.UnixNano() / int64(time.Millisecond),
+			App:       app,
+			Env:       env,
+			Level:     level,
+		}
+
+		if meta != "" {
 			line.Meta = metaEnvelope{
-				indexed: msg.Options.IndexMeta,
-				meta:    msg.Options.Meta,
+				indexed: t.options.IndexMeta,
+				meta:    meta,
 			}
 		}
 

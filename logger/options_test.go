@@ -38,25 +38,27 @@ func TestOptions_Validate(t *testing.T) {
 	}
 }
 
-func TestOptions_Merge(t *testing.T) {
-	o := Options{
-		App:   "app",
-		Env:   "development",
-		Level: "info",
-		Meta:  `{"foo": "bar"}`,
+func TestMessageOptions_Validate(t *testing.T) {
+	testCases := []struct {
+		label   string
+		options MessageOptions
+		errStr  string
+	}{
+		{"App length", MessageOptions{App: strings.Repeat("a", 83)}, "One or more invalid options:\nApp: length must be less than 80\n"},
+		{"Env length", MessageOptions{Env: strings.Repeat("a", 83)}, "One or more invalid options:\nEnv: length must be less than 80\n"},
+		{"Level length", MessageOptions{Level: strings.Repeat("a", 83)}, "One or more invalid options:\nLevel: length must be less than 80\n"},
 	}
 
-	o = o.merge(Options{
-		App:   "merge",
-		Env:   "merge",
-		Level: "merge",
-		Meta:  `{"baz": "merge"}`,
-	})
-
-	assert.Equal(t, "merge", o.App)
-	assert.Equal(t, "merge", o.Env)
-	assert.Equal(t, "merge", o.Level)
-	assert.Equal(t, `{"baz": "merge"}`, o.Meta)
+	for _, tc := range testCases {
+		t.Run(tc.label, func(t *testing.T) {
+			err := tc.options.validate()
+			if tc.errStr == "" {
+				assert.Equal(t, nil, err)
+			} else {
+				assert.EqualError(t, err, tc.errStr)
+			}
+		})
+	}
 }
 
 func TestOptions_SetDefaults(t *testing.T) {
