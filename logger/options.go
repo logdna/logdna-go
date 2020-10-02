@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"errors"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 	"time"
@@ -13,6 +13,7 @@ const (
 	defaultSendTimeout   = 30 * time.Second
 	defaultFlushInterval = 250 * time.Millisecond
 	defaultMaxBufferLen  = 50
+	maxOptionLength      = 80
 )
 
 // InvalidOptionMessage represents an issue with the supplied configuration.
@@ -40,43 +41,66 @@ type Options struct {
 	Timestamp     time.Time
 }
 
-func (e InvalidOptionMessage) String() string {
-	return fmt.Sprintf("Options.%s: %s", e.Option, e.Message)
+type fieldIssue struct {
+	field string
+	prob  string
 }
 
-func validateOptionLength(option string, value string, problems *[]string) {
-	if len(value) > 32 {
-		*problems = append(*problems, InvalidOptionMessage{option, "length must be less than 32"}.String())
+type optionsError struct {
+	issues []fieldIssue
+}
+
+func (e *optionsError) Error() string {
+	var str strings.Builder
+	str.WriteString("One or more invalid options:\n")
+	for i := 0; i < len(e.issues); i++ {
+		str.WriteString(fmt.Sprintf("%s: %s\n", e.issues[i].field, e.issues[i].prob))
 	}
+	return str.String()
+}
+
+func validateOptionLength(option string, value string) *fieldIssue {
+	if len(value) > maxOptionLength {
+		return &fieldIssue{field: option, prob: "length must be less than 80"}
+	}
+	return nil
 }
 
 func (options *Options) validate() error {
-	var problems []string
-	reMacAddress := regexp.MustCompile(`^([0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])`)
-	reHostname := regexp.MustCompile(`(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])`)
-	reIPAddress := regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}`)
+	reHostname := regexp.MustCompile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$`)
+	var issues []fieldIssue
 
-	validateOptionLength("App", options.App, &problems)
-	validateOptionLength("Env", options.Env, &problems)
-	validateOptionLength("Hostname", options.Hostname, &problems)
-	validateOptionLength("Level", options.Level, &problems)
-
-	if options.MacAddress != "" && (!reMacAddress.MatchString(options.MacAddress)) {
-		problems = append(problems, InvalidOptionMessage{"MacAddress", "invalid format"}.String())
+	if issue := validateOptionLength("App", options.App); issue != nil {
+		issues = append(issues, *issue)
+	}
+	if issue := validateOptionLength("Env", options.Env); issue != nil {
+		issues = append(issues, *issue)
+	}
+	if issue := validateOptionLength("Hostname", options.Hostname); issue != nil {
+		issues = append(issues, *issue)
+	}
+	if issue := validateOptionLength("Level", options.Level); issue != nil {
+		issues = append(issues, *issue)
 	}
 
+	if options.MacAddress != "" {
+		mac, err := net.ParseMAC(options.MacAddress)
+		if err != nil {
+			issues = append(issues, fieldIssue{"MacAddress", "Invalid format"})
+		} else {
+			options.MacAddress = mac.String()
+		}
+	}
 	if options.Hostname != "" && !reHostname.MatchString(options.Hostname) {
-		problems = append(problems, InvalidOptionMessage{"Hostname", "invalid format"}.String())
+		issues = append(issues, fieldIssue{"Hostname", "Invalid format"})
+	}
+	if options.IPAddress != "" && net.ParseIP(options.IPAddress) == nil {
+		issues = append(issues, fieldIssue{"IPAddress", "Invalid format"})
 	}
 
-	if options.IPAddress != "" && !reIPAddress.MatchString(options.IPAddress) {
-		problems = append(problems, InvalidOptionMessage{"IPAddress", "invalid format"}.String())
+	if len(issues) > 0 {
+		return &optionsError{issues: issues}
 	}
-
-	if len(problems) > 0 {
-		return errors.New(strings.Join(problems, ", "))
-	}
-
 	return nil
 }
 
